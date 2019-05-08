@@ -127,7 +127,7 @@ func (app *App) NewWindow(width, height uint, fullscreen bool, title string) *Wi
 	return win
 }
 
-// Destroy destroyes the window.
+// Destroy destroys the window.
 func (win *Window) Destroy() {
 	C.ulDestroyOverlay(win.ovl)
 	C.ulDestroyWindow(win.win)
