@@ -108,6 +108,11 @@ type JSContext struct {
 	ctx C.JSContextRef
 }
 
+// JSValue
+type JSValue struct {
+	val C.JSValueRef
+}
+
 // NewApp creates the App singleton.
 //
 // Note: You should only create one of these per application lifetime.
@@ -260,17 +265,27 @@ func (win *Window) View() *View {
 // LoadHTML loads a raw string of html
 func (view *View) LoadHTML(html string) {
 	s := C.CString(html)
-	defer C.free(unsafe.Pointer(s))
+	uls := C.ulCreateString(s)
 
-	C.ulViewLoadHTML(view.view, C.ulCreateString(s))
+	defer func() {
+		C.ulDestroyString(uls)
+		C.free(unsafe.Pointer(s))
+	}()
+
+	C.ulViewLoadHTML(view.view, uls)
 }
 
 // LoadURL loads a URL into main frame
 func (view *View) LoadURL(url string) {
 	s := C.CString(url)
-	defer C.free(unsafe.Pointer(s))
+	uls := C.ulCreateString(s)
 
-	C.ulViewLoadURL(view.view, C.ulCreateString(s))
+	defer func() {
+		C.ulDestroyString(uls)
+		C.free(unsafe.Pointer(s))
+	}()
+
+	C.ulViewLoadURL(view.view, uls)
 }
 
 /*
@@ -294,6 +309,19 @@ func (view *View) IsLoading() bool {
 // JSContext gets the page's JSContext for use with JavaScriptCore API
 func (view *View) JSContext() *JSContext {
 	return &JSContext{ctx: C.ulViewGetJSContext(view.view)}
+}
+
+// EvaluateScript evaluates a raw string of JavaScript and return result
+func (view *View) EvaluateScript(script string) JSValue {
+	s := C.CString(script)
+	uls := C.ulCreateString(s)
+
+	defer func() {
+		C.ulDestroyString(uls)
+		C.free(unsafe.Pointer(s))
+	}()
+
+	return JSValue{val: C.ulViewEvaluateScript(view.view, uls)}
 }
 
 // CanGoBack checks if can navigate backwards in history
