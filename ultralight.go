@@ -65,7 +65,7 @@ func NewApp() *App {
 	return &App{app: C.ulCreateApp(C.ulCreateConfig())}
 }
 
-// Destroy destroyes the App instance.
+// Destroy destroys the App instance.
 func (app *App) Destroy() {
 	C.ulDestroyApp(app.app)
 	app.app = nil
