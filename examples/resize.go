@@ -42,11 +42,30 @@ func main() {
 	}
 
 	win.OnResize(func(width, height uint) {
+		fmt.Println("resize", width, height)
 		win.Resize(width, height)
 	})
 
 	win.OnClose(func() {
 		fmt.Println("window is closing")
+	})
+
+	//view := win.View()
+
+	win.View().OnBeginLoading(func() {
+		fmt.Println("begin loading")
+	})
+
+	win.View().OnFinishLoading(func() {
+		fmt.Println("finish loading")
+	})
+
+	win.View().OnUpdateHistory(func() {
+		fmt.Println("update history")
+	})
+
+	win.View().OnDOMReady(func() {
+		fmt.Println("DOM ready")
 	})
 
 	/*
