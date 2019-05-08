@@ -1,3 +1,6 @@
+[![Go Documentation](http://godoc.org/github.com/raff/ultralight-go?status.svg)](http://godoc.org/github.com/raff/ultralight-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/raff/ultralight-go)](https://goreportcard.com/report/github.com/raff/ultralight-go)
+
 # ultralight-go
 Go bindings for https://ultralig.ht/
 
