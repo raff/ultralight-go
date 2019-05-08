@@ -55,41 +55,41 @@ type View struct {
 	view C.ULView
 }
 
-///
-/// Create the App singleton.
-///
-/// Note: You should only create one of these per application lifetime.
-///
+//
+// Create the App singleton.
+//
+// Note: You should only create one of these per application lifetime.
+//
 func NewApp() *App {
 	return &App{app: C.ulCreateApp(C.ulCreateConfig())}
 }
 
-///
-/// Destroy the App instance.
-///
+//
+// Destroy the App instance.
+//
 func (app *App) Destroy() {
 	C.ulDestroyApp(app.app)
 	app.app = nil
 }
 
-///
-/// Get the main window.
-///
+//
+// Get the main window.
+//
 func (app *App) Window() *Window {
 	return &Window{win: C.ulAppGetWindow(app.app)}
 }
 
-///
-/// Whether or not the App is running.
-///
+//
+// Whether or not the App is running.
+//
 func (app *App) IsRunning() bool {
 	return bool(C.ulAppIsRunning(app.app))
 }
 
-///
-/// Set a callback for whenever the App updates. You should update all app
-/// logic here.
-///
+//
+// Set a callback for whenever the App updates. You should update all app
+// logic here.
+//
 func (app *App) OnUpdate(cb func()) {
 	app.onUpdate = cb
 	p := unsafe.Pointer(app.app)
@@ -103,25 +103,25 @@ func (app *App) OnUpdate(cb func()) {
 	}
 }
 
-///
-/// Run the main loop.
-///
+//
+// Run the main loop.
+//
 func (app *App) Run() {
 	C.ulAppRun(app.app)
 }
 
-///
-/// Quit the application.
-///
+//
+// Quit the application.
+//
 func (app *App) Quit() {
 	C.ulAppQuit(app.app)
 }
 
 var callbackData = map[unsafe.Pointer]interface{}{}
 
-///
-/// Create a new Window.
-///
+//
+// Create a new Window.
+//
 func (app *App) NewWindow(width, height uint, fullscreen bool, title string) *Window {
 	win := &Window{win: C.ulCreateWindow(C.ulAppGetMainMonitor(app.app),
 		C.uint(width), C.uint(height),
@@ -140,9 +140,9 @@ func (app *App) NewWindow(width, height uint, fullscreen bool, title string) *Wi
 	return win
 }
 
-///
-/// Destroy a Window.
-///
+//
+// Destroy a Window.
+//
 func (win *Window) Destroy() {
 	C.ulDestroyOverlay(win.ovl)
 	C.ulDestroyWindow(win.win)
@@ -151,16 +151,16 @@ func (win *Window) Destroy() {
 	win.win = nil
 }
 
-///
-/// Close a window.
-///
+//
+// Close a window.
+//
 func (win *Window) Close() {
 	C.ulWindowClose(win.win)
 }
 
-///
-/// Set the window title.
-///
+//
+// Set the window title.
+//
 func (win *Window) SetTitle(title string) {
 	t := C.CString(title)
 	C.ulWindowSetTitle(win.win, t)
@@ -197,9 +197,9 @@ func (win *Window) OnClose(cb func()) {
 	}
 }
 
-///
-/// Get the underlying View.
-///
+//
+// Get the underlying View.
+//
 func (win *Window) View() *View {
 	return &View{view: C.ulOverlayGetView(win.ovl)}
 }
