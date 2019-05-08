@@ -58,6 +58,11 @@ type View struct {
 	view C.ULView
 }
 
+// JSContext
+type JSContext struct {
+	ctx C.JSContextRef
+}
+
 // NewApp creates the App singleton.
 //
 // Note: You should only create one of these per application lifetime.
@@ -202,6 +207,54 @@ func (view *View) LoadURL(url string) {
 	defer C.free(unsafe.Pointer(s))
 
 	C.ulViewLoadURL(view.view, C.ulCreateString(s))
+}
+
+/*
+// URL returns the current URL.
+func (view *View) URL() string {
+    s := C.ulViewGetURL(view.view)
+    if C.ulStringGetLength(s) == 0 {
+        return ""
+    }
+
+    data := C.ulStringGetData(s)
+    return C.GoString(data)
+}
+*/
+
+// IsLoading Checks if main frame is loading.
+func (view *View) IsLoading() bool {
+	return bool(C.ulViewIsLoading(view.view))
+}
+
+// JSContext gets the page's JSContext for use with JavaScriptCore API
+func (view *View) JSContext() *JSContext {
+	return &JSContext{ctx: C.ulViewGetJSContext(view.view)}
+}
+
+// CanGoBack checks if can navigate backwards in history
+func (view *View) CanGoBack() bool {
+	return bool(C.ulViewCanGoBack(view.view))
+}
+
+// CanGoForward checks if can navigate forwards in history
+func (view *View) CanGoForward() bool {
+	return bool(C.ulViewCanGoForward(view.view))
+}
+
+// GoBack navigates backwards in history
+func (view *View) GoBack() {
+	C.ulViewGoBack(view.view)
+}
+
+// GoForward navigates forwards in history
+func (view *View) GoForward() {
+	C.ulViewGoForward(view.view)
+}
+
+// GoToHistoryOffset navigates to arbitrary offset in history
+func (view *View) GoToHistoryOffset(offset int) {
+	C.ulViewGoToHistoryOffset(view.view, C.int(offset))
 }
 
 //export appUpdateCallback
