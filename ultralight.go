@@ -13,6 +13,11 @@ extern void viewBeginLoadingCallback(void *, ULView);
 extern void viewFinishLoadingCallback(void *, ULView);
 extern void viewUpdateHistoryCallback(void *, ULView);
 extern void viewDOMReadyCallback(void *, ULView);
+extern void viewConsoleMessageCallback(void* user_data, ULView caller,
+                                       ULMessageSource source, ULMessageLevel level,
+                                       ULString message, unsigned int line_number,
+                                       unsigned int column_number,
+                                       ULString source_id);
 
 static inline void set_app_update_callback(ULApp app, void *data) {
         if (data == NULL) {
@@ -69,6 +74,14 @@ static inline void set_view_dom_ready_callback(ULView view, void *data) {
             ulViewSetDOMReadyCallback(view, viewDOMReadyCallback, data);
         }
 }
+
+static inline void set_view_console_message_callback(ULView view, void *data) {
+        if (data == NULL) {
+            ulViewSetAddConsoleMessageCallback(view, NULL, NULL);
+        } else {
+            ulViewSetAddConsoleMessageCallback(view, viewConsoleMessageCallback, data);
+        }
+}
 */
 import "C"
 import "unsafe"
@@ -76,6 +89,43 @@ import "unicode/utf16"
 import "unicode/utf8"
 import "reflect"
 import "bytes"
+
+type JSType int
+
+const (
+	JSTypeUndefined = JSType(C.kJSTypeUndefined)
+	JSTypeNull      = JSType(C.kJSTypeNull)
+	JSTypeBoolean   = JSType(C.kJSTypeBoolean)
+	JSTypeNumber    = JSType(C.kJSTypeNumber)
+	JSTypeString    = JSType(C.kJSTypeString)
+	JSTypeObject    = JSType(C.kJSTypeObject)
+)
+
+type MessageSource int
+
+const (
+	MessageSourceXML            = MessageSource(C.kMessageSource_XML)
+	MessageSourceJS             = MessageSource(C.kMessageSource_JS)
+	MessageSourceNetwork        = MessageSource(C.kMessageSource_Network)
+	MessageSourceConsoleAPI     = MessageSource(C.kMessageSource_ConsoleAPI)
+	MessageSourceStorage        = MessageSource(C.kMessageSource_Storage)
+	MessageSourceAppCache       = MessageSource(C.kMessageSource_AppCache)
+	MessageSourceRendering      = MessageSource(C.kMessageSource_Rendering)
+	MessageSourceCSS            = MessageSource(C.kMessageSource_CSS)
+	MessageSourceSecurity       = MessageSource(C.kMessageSource_Security)
+	MessageSourceContentBlocker = MessageSource(C.kMessageSource_ContentBlocker)
+	MessageSourceOther          = MessageSource(C.kMessageSource_Other)
+)
+
+type MessageLevel int
+
+const (
+	MessageLevelLog     = MessageLevel(C.kMessageLevel_Log)
+	MessageLevelWarning = MessageLevel(C.kMessageLevel_Warning)
+	MessageLevelError   = MessageLevel(C.kMessageLevel_Error)
+	MessageLevelDebug   = MessageLevel(C.kMessageLevel_Debug)
+	MessageLevelInfo    = MessageLevel(C.kMessageLevel_Info)
+)
 
 // App is the main application object
 type App struct {
@@ -101,10 +151,11 @@ type Window struct {
 type View struct {
 	view C.ULView
 
-	onBeginLoading  func()
-	onFinishLoading func()
-	onUpdateHistory func()
-	onDOMReady      func()
+	onBeginLoading   func()
+	onFinishLoading  func()
+	onUpdateHistory  func()
+	onDOMReady       func()
+	onConsoleMessage func(MessageSource, MessageLevel, string, uint, uint, string)
 }
 
 // JSContext
@@ -128,17 +179,6 @@ type JSObject struct {
 	obj C.JSObjectRef
 }
 
-type JSType int
-
-const (
-	JSTypeUndefined = JSType(C.kJSTypeUndefined)
-	JSTypeNull      = JSType(C.kJSTypeNull)
-	JSTypeBoolean   = JSType(C.kJSTypeBoolean)
-	JSTypeNumber    = JSType(C.kJSTypeNumber)
-	JSTypeString    = JSType(C.kJSTypeString)
-	JSTypeObject    = JSType(C.kJSTypeObject)
-)
-
 func decodeUTF16(p *C.ushort, l C.ulong) string {
 	var u []uint16
 	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&u)))
@@ -156,6 +196,16 @@ func decodeUTF16(p *C.ushort, l C.ulong) string {
 	}
 
 	return ret.String()
+}
+
+func decodeULString(s C.ULString) string {
+	l := C.ulStringGetLength(s)
+	if l == 0 {
+		return ""
+	}
+
+	data := C.ulStringGetData(s)
+	return decodeUTF16(data, l)
 }
 
 // NewApp creates the App singleton.
@@ -225,11 +275,7 @@ func (app *App) NewWindow(width, height uint, fullscreen bool, title string) *Wi
 		C.kWindowFlags_Titled|C.kWindowFlags_Resizable|C.kWindowFlags_Maximizable),
 		app: app}
 
-	if title != "" {
-		t := C.CString(title)
-		C.ulWindowSetTitle(win.win, t)
-		C.free(unsafe.Pointer(t))
-	}
+	win.SetTitle(title)
 
 	C.ulAppSetWindow(app.app, win.win)
 
@@ -335,14 +381,7 @@ func (view *View) LoadURL(url string) {
 
 // URL returns the current URL.
 func (view *View) URL() string {
-	s := C.ulViewGetURL(view.view)
-	l := C.ulStringGetLength(s)
-	if l == 0 {
-		return ""
-	}
-
-	data := C.ulStringGetData(s)
-	return decodeUTF16(data, l)
+	return decodeULString(C.ulViewGetURL(view.view))
 }
 
 // Title returns the current title.
@@ -469,6 +508,22 @@ func (view *View) OnDOMReady(cb func()) {
 	} else {
 		callbackData[p] = view
 		C.set_view_dom_ready_callback(view.view, p)
+	}
+}
+
+// Set callback for when a message is added to the console (useful for
+// JavaScript / network errors and debugging)
+func (view *View) OnConsoleMessage(cb func(source MessageSource, level MessageLevel,
+	message string, line uint, col uint, sourceID string)) {
+	view.onConsoleMessage = cb
+	p := unsafe.Pointer(view.view)
+
+	if cb == nil {
+		callbackData[p] = nil
+		C.set_view_console_message_callback(view.view, nil)
+	} else {
+		callbackData[p] = view
+		C.set_view_console_message_callback(view.view, p)
 	}
 }
 
@@ -600,5 +655,21 @@ func viewDOMReadyCallback(userData unsafe.Pointer, caller C.ULView) {
 	view := callbackData[userData].(*View)
 	if view != nil {
 		view.onDOMReady()
+	}
+}
+
+//export viewConsoleMessageCallback
+func viewConsoleMessageCallback(userData unsafe.Pointer, caller C.ULView,
+	source C.ULMessageSource, level C.ULMessageLevel,
+	message C.ULString, line, col C.uint,
+	sourceId C.ULString) {
+	view := callbackData[userData].(*View)
+	if view != nil {
+		view.onConsoleMessage(
+			MessageSource(source),
+			MessageLevel(level),
+			decodeULString(message),
+			uint(line), uint(col),
+			decodeULString(sourceId))
 	}
 }
