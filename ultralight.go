@@ -345,6 +345,18 @@ func (view *View) URL() string {
 	return decodeUTF16(data, l)
 }
 
+// Title returns the current title.
+func (view *View) Title() string {
+	s := C.ulViewGetTitle(view.view)
+	l := C.ulStringGetLength(s)
+	if l == 0 {
+		return ""
+	}
+
+	data := C.ulStringGetData(s)
+	return decodeUTF16(data, l)
+}
+
 // IsLoading Checks if main frame is loading.
 func (view *View) IsLoading() bool {
 	return bool(C.ulViewIsLoading(view.view))
