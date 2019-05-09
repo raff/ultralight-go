@@ -72,6 +72,10 @@ static inline void set_view_dom_ready_callback(ULView view, void *data) {
 */
 import "C"
 import "unsafe"
+import "unicode/utf16"
+import "unicode/utf8"
+import "reflect"
+import "bytes"
 
 // App is the main application object
 type App struct {
@@ -119,6 +123,11 @@ type JSValue struct {
 	ctx C.JSContextRef
 }
 
+// JSObject
+type JSObject struct {
+	obj C.JSObjectRef
+}
+
 type JSType int
 
 const (
@@ -130,9 +139,23 @@ const (
 	JSTypeObject    = JSType(C.kJSTypeObject)
 )
 
-// JSObject
-type JSObject struct {
-	obj C.JSObjectRef
+func decodeUTF16(p *C.ushort, l C.ulong) string {
+	var u []uint16
+	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&u)))
+	sliceHeader.Cap = int(l)
+	sliceHeader.Len = int(l)
+	sliceHeader.Data = uintptr(unsafe.Pointer(p))
+
+	runes := utf16.Decode(u)
+	ret := &bytes.Buffer{}
+	b8buf := make([]byte, 4)
+
+	for _, r := range runes {
+		n := utf8.EncodeRune(b8buf, r)
+		ret.Write(b8buf[:n])
+	}
+
+	return ret.String()
 }
 
 // NewApp creates the App singleton.
@@ -310,18 +333,17 @@ func (view *View) LoadURL(url string) {
 	C.ulViewLoadURL(view.view, uls)
 }
 
-/*
 // URL returns the current URL.
 func (view *View) URL() string {
-    s := C.ulViewGetURL(view.view)
-    if C.ulStringGetLength(s) == 0 {
-        return ""
-    }
+	s := C.ulViewGetURL(view.view)
+	l := C.ulStringGetLength(s)
+	if l == 0 {
+		return ""
+	}
 
-    data := C.ulStringGetData(s)
-    return C.GoString(data)
+	data := C.ulStringGetData(s)
+	return decodeUTF16(data, l)
 }
-*/
 
 // IsLoading Checks if main frame is loading.
 func (view *View) IsLoading() bool {

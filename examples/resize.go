@@ -57,7 +57,7 @@ func main() {
 	})
 
 	win.View().OnFinishLoading(func() {
-		fmt.Println("finish loading")
+		fmt.Println("finish loading", win.View().URL())
 	})
 
 	win.View().OnUpdateHistory(func() {
