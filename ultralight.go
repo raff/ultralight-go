@@ -473,6 +473,26 @@ func (v *JSValue) IsDate() bool {
 	return bool(C.JSValueIsDate(v.ctx, v.val))
 }
 
+// Creates a JavaScript value of the undefined type.
+func (ctx *JSContext) Undefined() JSValue {
+	return JSValue{ctx: ctx.ctx, val: C.JSValueMakeUndefined(ctx.ctx)}
+}
+
+// Creates a JavaScript value of the null type.
+func (ctx *JSContext) Null() JSValue {
+	return JSValue{ctx: ctx.ctx, val: C.JSValueMakeNull(ctx.ctx)}
+}
+
+// Creates a JavaScript value of the boolean type.
+func (ctx *JSContext) Boolean(v bool) JSValue {
+	return JSValue{ctx: ctx.ctx, val: C.JSValueMakeBoolean(ctx.ctx, C.bool(v))}
+}
+
+// Creates a JavaScript value of the number type.
+func (ctx *JSContext) Number(v float64) JSValue {
+	return JSValue{ctx: ctx.ctx, val: C.JSValueMakeNumber(ctx.ctx, C.double(v))}
+}
+
 //export appUpdateCallback
 func appUpdateCallback(userData unsafe.Pointer) {
 	app := callbackData[userData].(*App)
