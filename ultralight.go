@@ -108,6 +108,11 @@ type JSContext struct {
 	ctx C.JSContextRef
 }
 
+// JSGlobalContext
+type JSGlobalContext struct {
+	ctx C.JSGlobalContextRef
+}
+
 // JSValue
 type JSValue struct {
 	val C.JSValueRef
@@ -124,6 +129,11 @@ const (
 	JSTypeString    = JSType(C.kJSTypeString)
 	JSTypeObject    = JSType(C.kJSTypeObject)
 )
+
+// JSObject
+type JSObject struct {
+	obj C.JSObjectRef
+}
 
 // NewApp creates the App singleton.
 //
@@ -491,6 +501,16 @@ func (ctx *JSContext) Boolean(v bool) JSValue {
 // Creates a JavaScript value of the number type.
 func (ctx *JSContext) Number(v float64) JSValue {
 	return JSValue{ctx: ctx.ctx, val: C.JSValueMakeNumber(ctx.ctx, C.double(v))}
+}
+
+// Gets the global object of a JavaScript execution context.
+func (ctx *JSContext) GlobalObject() JSObject {
+	return JSObject{obj: C.JSContextGetGlobalObject(ctx.ctx)}
+}
+
+// Gets the global object of a JavaScript execution context.
+func (ctx *JSContext) GlobalContext() JSGlobalContext {
+	return JSGlobalContext{ctx: C.JSContextGetGlobalContext(ctx.ctx)}
 }
 
 //export appUpdateCallback
