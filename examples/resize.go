@@ -66,6 +66,33 @@ func main() {
 
 	win.View().OnDOMReady(func() {
 		fmt.Println("DOM ready")
+
+		values := []string{
+			"'hello'",
+			"42",
+			"true",
+			"undefined",
+			"null",
+			"{a: 1, b: 2}",
+			"[1,2,3]",
+			"new Date()",
+		}
+
+		for _, s := range values {
+			v := win.View().EvaluateScript(s)
+			fmt.Printf("%v t=%v o=%v, s=%v, N=%v, b=%v, a=%v, d=%v u=%v n=%v\n",
+				s,
+				v.Type(),
+				v.IsObject(),
+				v.IsString(),
+				v.IsNumber(),
+				v.IsBoolean(),
+				v.IsArray(),
+				v.IsDate(),
+				v.IsUndefined(),
+				v.IsNull(),
+			)
+		}
 	})
 
 	/*

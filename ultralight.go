@@ -111,7 +111,19 @@ type JSContext struct {
 // JSValue
 type JSValue struct {
 	val C.JSValueRef
+	ctx C.JSContextRef
 }
+
+type JSType int
+
+const (
+	JSTypeUndefined = JSType(C.kJSTypeUndefined)
+	JSTypeNull      = JSType(C.kJSTypeNull)
+	JSTypeBoolean   = JSType(C.kJSTypeBoolean)
+	JSTypeNumber    = JSType(C.kJSTypeNumber)
+	JSTypeString    = JSType(C.kJSTypeString)
+	JSTypeObject    = JSType(C.kJSTypeObject)
+)
 
 // NewApp creates the App singleton.
 //
@@ -321,7 +333,7 @@ func (view *View) EvaluateScript(script string) JSValue {
 		C.free(unsafe.Pointer(s))
 	}()
 
-	return JSValue{val: C.ulViewEvaluateScript(view.view, uls)}
+	return JSValue{val: C.ulViewEvaluateScript(view.view, uls), ctx: C.ulViewGetJSContext(view.view)}
 }
 
 // CanGoBack checks if can navigate backwards in history
@@ -414,6 +426,51 @@ func (view *View) OnDOMReady(cb func()) {
 		callbackData[p] = view
 		C.set_view_dom_ready_callback(view.view, p)
 	}
+}
+
+// Returns a JavaScript value's type.
+func (v *JSValue) Type() JSType {
+	return JSType(C.JSValueGetType(v.ctx, v.val))
+}
+
+// Tests whether a JavaScript value's type is the undefined type.
+func (v *JSValue) IsUndefined() bool {
+	return bool(C.JSValueIsUndefined(v.ctx, v.val))
+}
+
+// Tests whether a JavaScript value's type is the null type.
+func (v *JSValue) IsNull() bool {
+	return bool(C.JSValueIsNull(v.ctx, v.val))
+}
+
+// Tests whether a JavaScript value's type is the boolean type.
+func (v *JSValue) IsBoolean() bool {
+	return bool(C.JSValueIsBoolean(v.ctx, v.val))
+}
+
+// Tests whether a JavaScript value's type is the number type.
+func (v *JSValue) IsNumber() bool {
+	return bool(C.JSValueIsNumber(v.ctx, v.val))
+}
+
+// Tests whether a JavaScript value's type is the string type.
+func (v *JSValue) IsString() bool {
+	return bool(C.JSValueIsString(v.ctx, v.val))
+}
+
+// Tests whether a JavaScript value's type is the object type.
+func (v *JSValue) IsObject() bool {
+	return bool(C.JSValueIsObject(v.ctx, v.val))
+}
+
+// Tests whether a JavaScript value is an array.
+func (v *JSValue) IsArray() bool {
+	return bool(C.JSValueIsArray(v.ctx, v.val))
+}
+
+// Tests whether a JavaScript value is a date.
+func (v *JSValue) IsDate() bool {
+	return bool(C.JSValueIsDate(v.ctx, v.val))
 }
 
 //export appUpdateCallback
