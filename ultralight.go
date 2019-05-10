@@ -177,6 +177,7 @@ type JSValue struct {
 // JSObject
 type JSObject struct {
 	obj C.JSObjectRef
+	ctx C.JSContextRef
 }
 
 func decodeUTF16(p *C.ushort, l C.ulong) string {
@@ -582,6 +583,14 @@ func (v *JSValue) IsDate() bool {
 	return bool(C.JSValueIsDate(v.ctx, v.val))
 }
 
+func (v *JSValue) IsFunction() bool {
+	if !v.IsObject() {
+		return false
+	}
+
+	return v.Object().IsFunction()
+}
+
 // Converts a JavaScript value to boolean and returns the resulting boolean.
 func (v *JSValue) Boolean() bool {
 	return bool(C.JSValueToBoolean(v.ctx, v.val))
@@ -600,6 +609,16 @@ func (v *JSValue) String() string {
 	}
 
 	return decodeJSString(js)
+}
+
+// Converts a JavaScript value to object and returns the resulting object.
+func (v *JSValue) Object() *JSObject {
+	o := C.JSValueToObject(v.ctx, v.val, nil)
+	if o == nil {
+		return nil
+	}
+
+	return &JSObject{ctx: v.ctx, obj: o}
 }
 
 // Creates a JavaScript value of the undefined type.
@@ -633,12 +652,17 @@ func (ctx *JSContext) String(v string) JSValue {
 
 // Gets the global object of a JavaScript execution context.
 func (ctx *JSContext) GlobalObject() JSObject {
-	return JSObject{obj: C.JSContextGetGlobalObject(ctx.ctx)}
+	return JSObject{ctx: ctx.ctx, obj: C.JSContextGetGlobalObject(ctx.ctx)}
 }
 
 // Gets the global object of a JavaScript execution context.
 func (ctx *JSContext) GlobalContext() JSGlobalContext {
 	return JSGlobalContext{ctx: C.JSContextGetGlobalContext(ctx.ctx)}
+}
+
+// Tests whether an object can be called as a function.
+func (o *JSObject) IsFunction() bool {
+	return bool(C.JSObjectIsFunction(o.ctx, o.obj))
 }
 
 //export appUpdateCallback

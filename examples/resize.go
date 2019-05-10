@@ -81,23 +81,61 @@ func main() {
 				"{a: 1, b: 2}",
 				"[1,2,3]",
 				"new Date()",
+				"function f() { return 42; }",
+			}
+
+			typeof := func(v ultralight.JSValue) string {
+				t := "<unknown>"
+
+				switch v.Type() {
+				case ultralight.JSTypeUndefined:
+					t = "undefined"
+				case ultralight.JSTypeNull:
+					t = "null"
+				case ultralight.JSTypeBoolean:
+					t = "boolean"
+				case ultralight.JSTypeNumber:
+					t = "number"
+				case ultralight.JSTypeString:
+					t = "string"
+				case ultralight.JSTypeObject:
+					t = "object"
+				}
+
+				if v.IsUndefined() {
+					t += "/undefined"
+				}
+				if v.IsNull() {
+					t += "/null"
+				}
+				if v.IsBoolean() {
+					t += "/boolean"
+				}
+				if v.IsNumber() {
+					t += "/number"
+				}
+				if v.IsString() {
+					t += "/string"
+				}
+				if v.IsObject() {
+					t += "/object"
+				}
+				if v.IsArray() {
+					t += "/array"
+				}
+				if v.IsDate() {
+					t += "/date"
+				}
+				if v.IsFunction() {
+					t += "/function"
+				}
+
+				return t
 			}
 
 			for _, s := range values {
-				v := win.View().EvaluateScript(s)
-				fmt.Printf("%v t=%v o=%v, s=%v, N=%v, b=%v, a=%v, d=%v u=%v n=%v %q\n",
-					s,
-					v.Type(),
-					v.IsObject(),
-					v.IsString(),
-					v.IsNumber(),
-					v.IsBoolean(),
-					v.IsArray(),
-					v.IsDate(),
-					v.IsUndefined(),
-					v.IsNull(),
-                                        v.String(),
-				)
+				v := win.View().EvaluateScript("(" + s + ")")
+				fmt.Printf("%v : %v %q\n", s, typeof(v), v.String())
 			}
 		}
 	})
