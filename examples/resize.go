@@ -69,7 +69,7 @@ func main() {
 	win.View().OnDOMReady(func() {
 		fmt.Println("DOM ready")
 
-		if false {
+		if true {
 			// test EvaluateScript and various JSValue methods
 
 			values := []string{
@@ -85,7 +85,7 @@ func main() {
 
 			for _, s := range values {
 				v := win.View().EvaluateScript(s)
-				fmt.Printf("%v t=%v o=%v, s=%v, N=%v, b=%v, a=%v, d=%v u=%v n=%v\n",
+				fmt.Printf("%v t=%v o=%v, s=%v, N=%v, b=%v, a=%v, d=%v u=%v n=%v %q\n",
 					s,
 					v.Type(),
 					v.IsObject(),
@@ -96,6 +96,7 @@ func main() {
 					v.IsDate(),
 					v.IsUndefined(),
 					v.IsNull(),
+                                        v.String(),
 				)
 			}
 		}

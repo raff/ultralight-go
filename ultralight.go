@@ -208,6 +208,16 @@ func decodeULString(s C.ULString) string {
 	return decodeUTF16(data, l)
 }
 
+func decodeJSString(s C.JSStringRef) string {
+	l := C.JSStringGetLength(s)
+	if l == 0 {
+		return ""
+	}
+
+	data := C.JSStringGetCharactersPtr(s)
+	return decodeUTF16(data, l)
+}
+
 // NewApp creates the App singleton.
 //
 // Note: You should only create one of these per application lifetime.
@@ -572,6 +582,26 @@ func (v *JSValue) IsDate() bool {
 	return bool(C.JSValueIsDate(v.ctx, v.val))
 }
 
+// Converts a JavaScript value to boolean and returns the resulting boolean.
+func (v *JSValue) Boolean() bool {
+	return bool(C.JSValueToBoolean(v.ctx, v.val))
+}
+
+// Converts a JavaScript value to number and returns the resulting number.
+func (v *JSValue) Number() float64 {
+	return float64(C.JSValueToNumber(v.ctx, v.val, nil))
+}
+
+// Converts a JavaScript value to string and copies the result into a JavaScript string.
+func (v *JSValue) String() string {
+	js := C.JSValueToStringCopy(v.ctx, v.val, nil)
+	if js == nil {
+		return ""
+	}
+
+	return decodeJSString(js)
+}
+
 // Creates a JavaScript value of the undefined type.
 func (ctx *JSContext) Undefined() JSValue {
 	return JSValue{ctx: ctx.ctx, val: C.JSValueMakeUndefined(ctx.ctx)}
@@ -590,6 +620,15 @@ func (ctx *JSContext) Boolean(v bool) JSValue {
 // Creates a JavaScript value of the number type.
 func (ctx *JSContext) Number(v float64) JSValue {
 	return JSValue{ctx: ctx.ctx, val: C.JSValueMakeNumber(ctx.ctx, C.double(v))}
+}
+
+// Creates a JavaScript value of the string type.
+func (ctx *JSContext) String(v string) JSValue {
+	s := C.CString(v)
+	js := C.JSStringCreateWithUTF8CString(s)
+	defer C.free(unsafe.Pointer(s))
+
+	return JSValue{ctx: ctx.ctx, val: C.JSValueMakeString(ctx.ctx, js)}
 }
 
 // Gets the global object of a JavaScript execution context.
