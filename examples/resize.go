@@ -151,6 +151,9 @@ func main() {
 			}
 		}
 
+		//
+		// Call Go from Javascript
+		//
 		f := win.View().JSContext().FunctionCallback("gopher",
 			func(f, this *ultralight.JSObject, args ...*ultralight.JSValue) *ultralight.JSValue {
 				fmt.Println("calling all gophers!")
@@ -158,6 +161,16 @@ func main() {
 			})
 
 		win.View().JSContext().GlobalObject().SetProperty("gopher", f)
+
+		//
+		// Call Javascript from Go
+		//
+		f = win.View().EvaluateScript(`(function() {
+                    console.log("hello jesters");
+                })`)
+
+		fmt.Println(f.String())
+		f.Object().CallStatic()
 	})
 
 	win.View().OnConsoleMessage(func(source ultralight.MessageSource, level ultralight.MessageLevel,

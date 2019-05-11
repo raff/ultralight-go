@@ -668,11 +668,11 @@ func makeJSString(v string) C.JSStringRef {
 type FunctionCallback func(function, this *JSObject, args ...*JSValue) *JSValue
 
 // Convenience method for creating a JavaScript function with a given callback as its implementation.
-func (ctx *JSContext) FunctionCallback(name string, cb FunctionCallback) JSValue {
+func (ctx *JSContext) FunctionCallback(name string, cb FunctionCallback) *JSValue {
 	obj := C.make_function_callback(ctx.ctx, makeJSString(name))
 	p := unsafe.Pointer(obj)
 	callbackData[p] = cb
-	return JSValue{ctx: ctx.ctx, val: C.JSValueRef(obj)}
+	return &JSValue{ctx: ctx.ctx, val: C.JSValueRef(obj)}
 }
 
 // Gets the global object of a JavaScript execution context.
@@ -715,7 +715,7 @@ func (o *JSObject) CallStatic(args ...JSValue) *JSValue {
 }
 
 // Sets a property on an object.
-func (o *JSObject) SetProperty(name string, value JSValue) {
+func (o *JSObject) SetProperty(name string, value *JSValue) {
 	C.JSObjectSetProperty(o.ctx, o.obj, makeJSString(name), value.val, 0, nil)
 }
 
