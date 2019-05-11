@@ -19,6 +19,9 @@ extern void viewConsoleMessageCallback(void* user_data, ULView caller,
                                        unsigned int column_number,
                                        ULString source_id);
 
+extern JSValueRef objFunctionCallback(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject,
+                                      size_t argumentCount, JSValueRef *arguments, JSValueRef* exception);
+
 static inline void set_app_update_callback(ULApp app, void *data) {
         if (data == NULL) {
             ulAppSetUpdateCallback(app, NULL, NULL);
@@ -82,6 +85,10 @@ static inline void set_view_console_message_callback(ULView view, void *data) {
             ulViewSetAddConsoleMessageCallback(view, viewConsoleMessageCallback, data);
         }
 }
+
+static inline JSObjectRef make_function_callback(JSContextRef ctx, JSStringRef name) {
+        return JSObjectMakeFunctionWithCallback(ctx, name, (JSObjectCallAsFunctionCallback)objFunctionCallback);
+}
 */
 import "C"
 import "unsafe"
@@ -89,6 +96,8 @@ import "unicode/utf16"
 import "unicode/utf8"
 import "reflect"
 import "bytes"
+
+import "log"
 
 type JSType int
 
@@ -650,9 +659,25 @@ func (ctx *JSContext) String(v string) JSValue {
 	return JSValue{ctx: ctx.ctx, val: C.JSValueMakeString(ctx.ctx, js)}
 }
 
+func makeJSString(v string) C.JSStringRef {
+	s := C.CString(v)
+	defer C.free(unsafe.Pointer(s))
+	return C.JSStringCreateWithUTF8CString(s)
+}
+
+type FunctionCallback func(function, this *JSObject, args ...*JSValue) *JSValue
+
+// Convenience method for creating a JavaScript function with a given callback as its implementation.
+func (ctx *JSContext) FunctionCallback(name string, cb FunctionCallback) JSValue {
+	obj := C.make_function_callback(ctx.ctx, makeJSString(name))
+	p := unsafe.Pointer(obj)
+	callbackData[p] = cb
+	return JSValue{ctx: ctx.ctx, val: C.JSValueRef(obj)}
+}
+
 // Gets the global object of a JavaScript execution context.
-func (ctx *JSContext) GlobalObject() JSObject {
-	return JSObject{ctx: ctx.ctx, obj: C.JSContextGetGlobalObject(ctx.ctx)}
+func (ctx *JSContext) GlobalObject() *JSObject {
+	return &JSObject{ctx: ctx.ctx, obj: C.JSContextGetGlobalObject(ctx.ctx)}
 }
 
 // Gets the global object of a JavaScript execution context.
@@ -687,6 +712,11 @@ func (o *JSObject) CallStatic(args ...JSValue) *JSValue {
 
 	ret := C.JSObjectCallAsFunction(o.ctx, o.obj, nil, C.size_t(nargs), jargs, nil)
 	return &JSValue{ctx: o.ctx, val: ret}
+}
+
+// Sets a property on an object.
+func (o *JSObject) SetProperty(name string, value JSValue) {
+	C.JSObjectSetProperty(o.ctx, o.obj, makeJSString(name), value.val, 0, nil)
 }
 
 //export appUpdateCallback
@@ -759,4 +789,38 @@ func viewConsoleMessageCallback(userData unsafe.Pointer, caller C.ULView,
 			uint(line), uint(col),
 			decodeULString(sourceId))
 	}
+}
+
+//export objFunctionCallback
+func objFunctionCallback(ctx C.JSContextRef, function C.JSObjectRef, this C.JSObjectRef,
+	nargs C.size_t, args *C.JSValueRef, exc *C.JSValueRef) C.JSValueRef {
+
+	if data := callbackData[unsafe.Pointer(function)]; data != nil {
+		if cb, ok := data.(FunctionCallback); ok {
+			f := &JSObject{ctx: ctx, obj: function}
+			fthis := &JSObject{ctx: ctx, obj: this}
+			fargs := make([]*JSValue, nargs)
+
+			if int(nargs) > 0 {
+				var ja []C.JSValueRef
+				sl := (*reflect.SliceHeader)(unsafe.Pointer(&ja))
+				sl.Cap = int(nargs)
+				sl.Len = int(nargs)
+				sl.Data = uintptr(unsafe.Pointer(args))
+
+				for i, v := range ja {
+					fargs[i] = &JSValue{ctx: ctx, val: v}
+				}
+			}
+
+			// FunctionCallback func(function, this *JSObject, args ...*JSValue) *JSValue
+			if ret := cb(f, fthis, fargs...); ret != nil {
+				return ret.val
+			}
+		} else {
+			log.Printf("expected FunctionCallback got %#v\n", data)
+		}
+	}
+
+	return C.JSValueMakeNull(ctx)
 }

@@ -34,6 +34,8 @@ func main() {
                 function reportWindowSize() {
                     heightOutput.textContent = window.innerHeight;
                     widthOutput.textContent = window.innerWidth;
+
+                    window.gopher("hello");
                 }
 
                 window.onresize = reportWindowSize;
@@ -69,7 +71,7 @@ func main() {
 	win.View().OnDOMReady(func() {
 		fmt.Println("DOM ready")
 
-		if true {
+		if false {
 			// test EvaluateScript and various JSValue methods
 
 			values := []string{
@@ -148,6 +150,14 @@ func main() {
 				}
 			}
 		}
+
+		f := win.View().JSContext().FunctionCallback("gopher",
+			func(f, this *ultralight.JSObject, args ...*ultralight.JSValue) *ultralight.JSValue {
+				fmt.Println("calling all gophers!")
+				return nil
+			})
+
+		win.View().JSContext().GlobalObject().SetProperty("gopher", f)
 	})
 
 	win.View().OnConsoleMessage(func(source ultralight.MessageSource, level ultralight.MessageLevel,
