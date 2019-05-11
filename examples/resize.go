@@ -81,10 +81,10 @@ func main() {
 				"{a: 1, b: 2}",
 				"[1,2,3]",
 				"new Date()",
-				"function f() { return 42; }",
+				"function f(x) { return x == null ? 42 : x }",
 			}
 
-			typeof := func(v ultralight.JSValue) string {
+			typeof := func(v *ultralight.JSValue) string {
 				t := "<unknown>"
 
 				switch v.Type() {
@@ -136,6 +136,16 @@ func main() {
 			for _, s := range values {
 				v := win.View().EvaluateScript("(" + s + ")")
 				fmt.Printf("%v : %v %q\n", s, typeof(v), v.String())
+
+				if v.IsFunction() {
+					fmt.Println("call", v.Object().CallStatic().String())
+
+					arg := win.View().JSContext().String("hello")
+					fmt.Println("call", v.Object().CallStatic(arg).String())
+
+					arg = win.View().JSContext().Number(999)
+					fmt.Println("call", v.Object().CallStatic(arg).String())
+				}
 			}
 		}
 	})

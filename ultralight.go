@@ -182,10 +182,10 @@ type JSObject struct {
 
 func decodeUTF16(p *C.ushort, l C.ulong) string {
 	var u []uint16
-	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&u)))
-	sliceHeader.Cap = int(l)
-	sliceHeader.Len = int(l)
-	sliceHeader.Data = uintptr(unsafe.Pointer(p))
+	sl := (*reflect.SliceHeader)((unsafe.Pointer(&u)))
+	sl.Cap = int(l)
+	sl.Len = int(l)
+	sl.Data = uintptr(unsafe.Pointer(p))
 
 	runes := utf16.Decode(u)
 	ret := &bytes.Buffer{}
@@ -418,7 +418,7 @@ func (view *View) JSContext() *JSContext {
 }
 
 // EvaluateScript evaluates a raw string of JavaScript and return result
-func (view *View) EvaluateScript(script string) JSValue {
+func (view *View) EvaluateScript(script string) *JSValue {
 	s := C.CString(script)
 	uls := C.ulCreateString(s)
 
@@ -427,7 +427,7 @@ func (view *View) EvaluateScript(script string) JSValue {
 		C.free(unsafe.Pointer(s))
 	}()
 
-	return JSValue{val: C.ulViewEvaluateScript(view.view, uls), ctx: C.ulViewGetJSContext(view.view)}
+	return &JSValue{val: C.ulViewEvaluateScript(view.view, uls), ctx: C.ulViewGetJSContext(view.view)}
 }
 
 // CanGoBack checks if can navigate backwards in history
@@ -663,6 +663,30 @@ func (ctx *JSContext) GlobalContext() JSGlobalContext {
 // Tests whether an object can be called as a function.
 func (o *JSObject) IsFunction() bool {
 	return bool(C.JSObjectIsFunction(o.ctx, o.obj))
+}
+
+// Calls an object as a function.
+func (o *JSObject) CallStatic(args ...JSValue) *JSValue {
+	var jargs *C.JSValueRef
+
+	nargs := len(args)
+	if nargs > 0 {
+		jargs = (*C.JSValueRef)(C.malloc(C.size_t(nargs) * C.size_t(unsafe.Sizeof(uintptr(0)))))
+		defer C.free(unsafe.Pointer(jargs))
+
+		var ja []C.JSValueRef
+		sl := (*reflect.SliceHeader)(unsafe.Pointer(&ja))
+		sl.Cap = nargs
+		sl.Len = nargs
+		sl.Data = uintptr(unsafe.Pointer(jargs))
+
+		for i, v := range args {
+			ja[i] = v.val
+		}
+	}
+
+	ret := C.JSObjectCallAsFunction(o.ctx, o.obj, nil, C.size_t(nargs), jargs, nil)
+	return &JSValue{ctx: o.ctx, val: ret}
 }
 
 //export appUpdateCallback
