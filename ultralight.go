@@ -691,8 +691,13 @@ func (o *JSObject) IsFunction() bool {
 }
 
 // Calls an object as a function.
-func (o *JSObject) CallStatic(args ...JSValue) *JSValue {
+func (o *JSObject) Call(this *JSObject, args ...JSValue) *JSValue {
+	var thisObj C.JSObjectRef
 	var jargs *C.JSValueRef
+
+	if this != nil {
+		thisObj = this.obj
+	}
 
 	nargs := len(args)
 	if nargs > 0 {
@@ -710,7 +715,7 @@ func (o *JSObject) CallStatic(args ...JSValue) *JSValue {
 		}
 	}
 
-	ret := C.JSObjectCallAsFunction(o.ctx, o.obj, nil, C.size_t(nargs), jargs, nil)
+	ret := C.JSObjectCallAsFunction(o.ctx, o.obj, thisObj, C.size_t(nargs), jargs, nil)
 	return &JSValue{ctx: o.ctx, val: ret}
 }
 

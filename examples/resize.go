@@ -140,13 +140,13 @@ func main() {
 				fmt.Printf("%v : %v %q\n", s, typeof(v), v.String())
 
 				if v.IsFunction() {
-					fmt.Println("call", v.Object().CallStatic().String())
+					fmt.Println("call", v.Object().Call(nil).String())
 
 					arg := win.View().JSContext().String("hello")
-					fmt.Println("call", v.Object().CallStatic(arg).String())
+					fmt.Println("call", v.Object().Call(nil, arg).String())
 
 					arg = win.View().JSContext().Number(999)
-					fmt.Println("call", v.Object().CallStatic(arg).String())
+					fmt.Println("call", v.Object().Call(nil, arg).String())
 				}
 			}
 		}
@@ -170,7 +170,7 @@ func main() {
                 })`)
 
 		fmt.Println(f.String())
-		f.Object().CallStatic()
+		f.Object().Call(nil)
 	})
 
 	win.View().OnConsoleMessage(func(source ultralight.MessageSource, level ultralight.MessageLevel,
