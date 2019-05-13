@@ -329,6 +329,16 @@ func (win *Window) SetTitle(title string) {
 	C.free(unsafe.Pointer(t))
 }
 
+// Whether or not an overlay has keyboard focus.
+func (win *Window) HasFocus() bool {
+	return bool(C.ulOverlayHasFocus(win.ovl))
+}
+
+// Grant this overlay exclusive keyboard focus.
+func (win *Window) Focus() {
+	C.ulOverlayFocus(win.ovl)
+}
+
 // Resize resizes the window (and underlying View).
 // Dimensions should be specified in device coordinates.
 func (win *Window) Resize(width, height uint) {
@@ -722,6 +732,28 @@ func (o *JSObject) Call(this *JSObject, args ...JSValue) *JSValue {
 // Sets a property on an object.
 func (o *JSObject) SetProperty(name string, value *JSValue) {
 	C.JSObjectSetProperty(o.ctx, o.obj, makeJSString(name), value.val, 0, nil)
+}
+
+// Gets a property from an object.
+func (o *JSObject) Property(name string) *JSValue {
+	return &JSValue{ctx: o.ctx, val: C.JSObjectGetProperty(o.ctx, o.obj, makeJSString(name), nil)}
+}
+
+// Gets the names of an object's enumerable properties.
+func (o *JSObject) PropertyNames() []string {
+	anames := C.JSObjectCopyPropertyNames(o.ctx, o.obj)
+	nnames := int(C.JSPropertyNameArrayGetCount(anames))
+	if nnames == 0 {
+		return nil
+	}
+
+	names := make([]string, nnames)
+	for i := 0; i < len(names); i++ {
+		n := C.JSPropertyNameArrayGetNameAtIndex(anames, C.ulong(i))
+		names[i] = decodeJSString(n)
+	}
+
+	return names
 }
 
 //export appUpdateCallback

@@ -71,6 +71,8 @@ func main() {
 	win.View().OnDOMReady(func() {
 		fmt.Println("DOM ready")
 
+		fmt.Println("GlobalObject properties:", win.View().JSContext().GlobalObject().PropertyNames(), "\n")
+
 		if false {
 			// test EvaluateScript and various JSValue methods
 
@@ -185,5 +187,6 @@ func main() {
 		})
 	*/
 
+	win.Focus()
 	app.Run()
 }
