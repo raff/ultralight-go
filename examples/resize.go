@@ -144,11 +144,9 @@ func main() {
 				if v.IsFunction() {
 					fmt.Println("call", v.Object().Call(nil).String())
 
-					arg := win.View().JSContext().String("hello")
-					fmt.Println("call", v.Object().Call(nil, arg).String())
+					fmt.Println("call", v.Object().Call(nil, "hello").String())
 
-					arg = win.View().JSContext().Number(999)
-					fmt.Println("call", v.Object().Call(nil, arg).String())
+					fmt.Println("call", v.Object().Call(nil, 999).String())
 				}
 			}
 		}

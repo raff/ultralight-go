@@ -669,6 +669,49 @@ func (ctx *JSContext) String(v string) JSValue {
 	return JSValue{ctx: ctx.ctx, val: C.JSValueMakeString(ctx.ctx, js)}
 }
 
+func (ctx *JSContext) JSValue(v interface{}) JSValue {
+	if v == nil {
+		return ctx.Null()
+	}
+
+	switch t := v.(type) {
+	case JSValue:
+		return t
+
+	case bool:
+		return ctx.Boolean(t)
+
+	case string:
+		return ctx.String(t)
+
+	case float64:
+		return ctx.Number(t)
+
+	case float32:
+		return ctx.Number(float64(t))
+
+	case int:
+		return ctx.Number(float64(t))
+
+	case int8:
+		return ctx.Number(float64(t))
+
+	case int16:
+		return ctx.Number(float64(t))
+
+	case int32:
+		return ctx.Number(float64(t))
+
+	case int64:
+		return ctx.Number(float64(t))
+
+	default:
+		log.Fatalf("cannot convert %#T to JSValue", t)
+	}
+
+	return ctx.Undefined() // not reached
+}
+
 func makeJSString(v string) C.JSStringRef {
 	s := C.CString(v)
 	defer C.free(unsafe.Pointer(s))
@@ -701,7 +744,7 @@ func (o *JSObject) IsFunction() bool {
 }
 
 // Calls an object as a function.
-func (o *JSObject) Call(this *JSObject, args ...JSValue) *JSValue {
+func (o *JSObject) Call(this *JSObject, args ...interface{}) *JSValue {
 	var thisObj C.JSObjectRef
 	var jargs *C.JSValueRef
 
@@ -720,8 +763,10 @@ func (o *JSObject) Call(this *JSObject, args ...JSValue) *JSValue {
 		sl.Len = nargs
 		sl.Data = uintptr(unsafe.Pointer(jargs))
 
+		ctx := &JSContext{ctx: o.ctx}
+
 		for i, v := range args {
-			ja[i] = v.val
+			ja[i] = ctx.JSValue(v).val
 		}
 	}
 
