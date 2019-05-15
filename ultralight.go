@@ -189,7 +189,7 @@ type JSObject struct {
 	ctx C.JSContextRef
 }
 
-func decodeUTF16(p *C.ushort, l C.ulong) string {
+func decodeUTF16(p *C.ULChar16, l C.size_t) string {
 	var u []uint16
 	sl := (*reflect.SliceHeader)((unsafe.Pointer(&u)))
 	sl.Cap = int(l)
@@ -225,7 +225,7 @@ func decodeJSString(s C.JSStringRef) string {
 	}
 
 	data := C.JSStringGetCharactersPtr(s)
-	return decodeUTF16(data, l)
+	return decodeUTF16((*C.ULChar16)(data), l)
 }
 
 // NewApp creates the App singleton.
@@ -799,7 +799,7 @@ func (o *JSObject) PropertyNames() []string {
 
 	names := make([]string, nnames)
 	for i := 0; i < len(names); i++ {
-		n := C.JSPropertyNameArrayGetNameAtIndex(anames, C.ulong(i))
+		n := C.JSPropertyNameArrayGetNameAtIndex(anames, C.size_t(i))
 		names[i] = decodeJSString(n)
 	}
 
