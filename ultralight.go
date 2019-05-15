@@ -339,6 +339,11 @@ func (win *Window) Focus() {
 	C.ulOverlayFocus(win.ovl)
 }
 
+// IsFullscreen checks whether or not a window is fullscreen.
+func (win *Window) IsFullscreen() bool {
+	return bool(C.ulWindowIsFullscreen(win.win))
+}
+
 // Resize resizes the window (and underlying View).
 // Dimensions should be specified in device coordinates.
 func (win *Window) Resize(width, height uint) {
@@ -905,4 +910,243 @@ func objFunctionCallback(ctx C.JSContextRef, function C.JSObjectRef, this C.JSOb
 	}
 
 	return C.JSValueMakeNull(ctx)
+}
+
+type Config struct {
+	cfg C.ULConfig
+}
+
+type configOption func(c *Config)
+
+func EnableImages(enabled bool) configOption {
+	return func(c *Config) {
+		c.EnableImages(enabled)
+	}
+}
+
+func EnableJavascript(enabled bool) configOption {
+	return func(c *Config) {
+		c.EnableImages(enabled)
+	}
+}
+
+func UseBGRA(enabled bool) configOption {
+	return func(c *Config) {
+		c.UseBGRAForOffscreenRendering(enabled)
+	}
+}
+
+func DeviceScaleHint(value float64) configOption {
+	return func(c *Config) {
+		c.DeviceScaleHint(value)
+	}
+}
+
+func FontFamilyStandard(fontName string) configOption {
+	return func(c *Config) {
+		c.FontFamilyStandard(fontName)
+	}
+}
+
+func FontFamilyFixed(fontName string) configOption {
+	return func(c *Config) {
+		c.FontFamilyFixed(fontName)
+	}
+}
+
+func FontFamilySerif(fontName string) configOption {
+	return func(c *Config) {
+		c.FontFamilySerif(fontName)
+	}
+}
+
+func FontFamilySansSerif(fontName string) configOption {
+	return func(c *Config) {
+		c.FontFamilySansSerif(fontName)
+	}
+}
+
+func UserAgent(agent string) configOption {
+	return func(c *Config) {
+		c.UserAgent(agent)
+	}
+}
+
+func UserStylesheet(css string) configOption {
+	return func(c *Config) {
+		c.UserStylesheet(css)
+	}
+}
+
+// Create config with default values (see <Ultralight/platform/Config.h>).
+func NewConfig(options ...configOption) *Config {
+	c := &Config{cfg: C.ulCreateConfig()}
+
+	for _, opt := range options {
+		opt(c)
+	}
+
+	return c
+}
+
+// Destroy config.
+func (c *Config) Destroy() {
+	C.ulDestroyConfig(c.cfg)
+	c.cfg = nil
+}
+
+// Set whether images should be enabled (Default = True)
+func (c *Config) EnableImages(enabled bool) {
+	C.ulConfigSetEnableImages(c.cfg, C.bool(enabled))
+}
+
+// Set whether JavaScript should be eanbled (Default = True)
+func (c *Config) EnableJavascript(enabled bool) {
+	C.ulConfigSetEnableJavaScript(c.cfg, C.bool(enabled))
+}
+
+// Set whether we should use BGRA byte order (instead of RGBA) for View
+// bitmaps. (Default = False)
+func (c *Config) UseBGRAForOffscreenRendering(enabled bool) {
+	C.ulConfigSetUseBGRAForOffscreenRendering(c.cfg, C.bool(enabled))
+}
+
+// Set the amount that the application DPI has been scaled, used for
+// scaling device coordinates to pixels and oversampling raster shapes.
+// (Default = 1.0)
+func (c *Config) DeviceScaleHint(value float64) {
+	C.ulConfigSetDeviceScaleHint(c.cfg, C.double(value))
+}
+
+// Set default font-family to use (Default = Times New Roman)
+func (c *Config) FontFamilyStandard(fontName string) {
+	s := C.CString(fontName)
+	uls := C.ulCreateString(s)
+
+	defer func() {
+		C.ulDestroyString(uls)
+		C.free(unsafe.Pointer(s))
+	}()
+
+	C.ulConfigSetFontFamilyStandard(c.cfg, uls)
+}
+
+// Set default font-family to use for fixed fonts, eg <pre> and <code>.
+// (Default = Courier New)
+func (c *Config) FontFamilyFixed(fontName string) {
+	s := C.CString(fontName)
+	uls := C.ulCreateString(s)
+
+	defer func() {
+		C.ulDestroyString(uls)
+		C.free(unsafe.Pointer(s))
+	}()
+
+	C.ulConfigSetFontFamilyFixed(c.cfg, uls)
+}
+
+// Set default font-family to use for serif fonts. (Default = Times New Roman)
+func (c *Config) FontFamilySerif(fontName string) {
+	s := C.CString(fontName)
+	uls := C.ulCreateString(s)
+
+	defer func() {
+		C.ulDestroyString(uls)
+		C.free(unsafe.Pointer(s))
+	}()
+
+	C.ulConfigSetFontFamilySerif(c.cfg, uls)
+}
+
+// Set default font-family to use for sans-serif fonts. (Default = Arial)
+func (c *Config) FontFamilySansSerif(fontName string) {
+	s := C.CString(fontName)
+	uls := C.ulCreateString(s)
+
+	defer func() {
+		C.ulDestroyString(uls)
+		C.free(unsafe.Pointer(s))
+	}()
+
+	C.ulConfigSetFontFamilySansSerif(c.cfg, uls)
+}
+
+// Set user agent string. (See <Ultralight/platform/Config.h> for the default)
+func (c *Config) UserAgent(agent string) {
+	s := C.CString(agent)
+	uls := C.ulCreateString(s)
+
+	defer func() {
+		C.ulDestroyString(uls)
+		C.free(unsafe.Pointer(s))
+	}()
+
+	C.ulConfigSetUserAgent(c.cfg, uls)
+}
+
+// Set user stylesheet (CSS). (Default = Empty)
+func (c *Config) UserStylesheet(css string) {
+	s := C.CString(css)
+	uls := C.ulCreateString(s)
+
+	defer func() {
+		C.ulDestroyString(uls)
+		C.free(unsafe.Pointer(s))
+	}()
+
+	C.ulConfigSetUserStylesheet(c.cfg, uls)
+}
+
+type Renderer struct {
+	rnd C.ULRenderer
+}
+
+// Create renderer (create this only once per application lifetime).
+func NewRenderer(c *Config) *Renderer {
+	return &Renderer{rnd: C.ulCreateRenderer(c.cfg)}
+}
+
+// Destroy renderer.
+func (r *Renderer) Destroy() {
+	C.ulDestroyRenderer(r.rnd)
+	r.rnd = nil
+}
+
+// Update timers and dispatch internal callbacks (JavaScript and network)
+func (r *Renderer) Update() {
+	C.ulUpdate(r.rnd)
+}
+
+// Render all active Views to their respective bitmaps.
+func (r *Renderer) Render() {
+	C.ulRender(r.rnd)
+}
+
+// Create a View with certain size (in device coordinates).
+func (r *Renderer) NewView(width, height uint, transparent bool) *View {
+	return &View{view: C.ulCreateView(r.rnd, C.uint(width), C.uint(height), C.bool(transparent))}
+}
+
+// Destroy a View.
+func (v *View) Destroy() {
+	v.OnBeginLoading(nil)
+	v.OnFinishLoading(nil)
+	v.OnUpdateHistory(nil)
+	v.OnDOMReady(nil)
+	v.OnConsoleMessage(nil)
+	C.ulDestroyView(v.view)
+	v.view = nil
+}
+
+// Get bitmap (will reset the dirty flag).
+//func (v *View) Bitmap() image.Image {
+//    bitmap := C.ulViewGetBitmap(v.view)
+//}
+
+// Write bitmap to a PNG on disk.
+func (v *View) WriteToPNG(filename string) bool {
+	path := C.CString(filename)
+	defer C.free(unsafe.Pointer(path))
+
+	return bool(C.ulBitmapWritePNG(C.ulViewGetBitmap(v.view), path))
 }
