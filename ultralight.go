@@ -438,7 +438,7 @@ func (win *Window) OnClose(cb func()) {
 // View gets the underlying View.
 func (win *Window) View() *View {
 	if len(win.ovl) > 0 {
-		return win.ovl[0].view
+		return win.ovl[0].View()
 	}
 
 	return nil
