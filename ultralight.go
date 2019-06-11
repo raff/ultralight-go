@@ -13,6 +13,8 @@ extern void viewBeginLoadingCallback(void *, ULView);
 extern void viewFinishLoadingCallback(void *, ULView);
 extern void viewUpdateHistoryCallback(void *, ULView);
 extern void viewDOMReadyCallback(void *, ULView);
+extern void viewChangeTitleCallback(void *, ULView, ULString);
+extern void viewChangeURLCallback(void *, ULView, ULString);
 extern void viewConsoleMessageCallback(void* user_data, ULView caller,
                                        ULMessageSource source, ULMessageLevel level,
                                        ULString message, unsigned int line_number,
@@ -75,6 +77,22 @@ static inline void set_view_dom_ready_callback(ULView view, void *data) {
             ulViewSetDOMReadyCallback(view, NULL, NULL);
         } else {
             ulViewSetDOMReadyCallback(view, viewDOMReadyCallback, data);
+        }
+}
+
+static inline void set_view_change_title_callback(ULView view, void *data) {
+        if (data == NULL) {
+            ulViewSetChangeTitleCallback(view, NULL, NULL);
+        } else {
+            ulViewSetChangeTitleCallback(view, viewChangeTitleCallback, data);
+        }
+}
+
+static inline void set_view_change_url_callback(ULView view, void *data) {
+        if (data == NULL) {
+            ulViewSetChangeURLCallback(view, NULL, NULL);
+        } else {
+            ulViewSetChangeURLCallback(view, viewChangeURLCallback, data);
         }
 }
 
@@ -168,6 +186,8 @@ type View struct {
 	onFinishLoading  func()
 	onUpdateHistory  func()
 	onDOMReady       func()
+	onChangeTitle    func(string)
+	onChangeURL      func(string)
 	onConsoleMessage func(MessageSource, MessageLevel, string, uint, uint, string)
 }
 
@@ -602,6 +622,34 @@ func (view *View) OnDOMReady(cb func()) {
 	}
 }
 
+// Set callback for when the page title changes
+func (view *View) OnChangeTitle(cb func(string)) {
+	view.onChangeTitle = cb
+	p := unsafe.Pointer(view.view)
+
+	if cb == nil {
+		callbackData[p] = nil
+		C.set_view_change_title_callback(view.view, nil)
+	} else {
+		callbackData[p] = view
+		C.set_view_change_title_callback(view.view, p)
+	}
+}
+
+// Set callback for when the page URL changes
+func (view *View) OnChangeURL(cb func(string)) {
+	view.onChangeURL = cb
+	p := unsafe.Pointer(view.view)
+
+	if cb == nil {
+		callbackData[p] = nil
+		C.set_view_change_url_callback(view.view, nil)
+	} else {
+		callbackData[p] = view
+		C.set_view_change_url_callback(view.view, p)
+	}
+}
+
 // Set callback for when a message is added to the console (useful for
 // JavaScript / network errors and debugging)
 func (view *View) OnConsoleMessage(cb func(source MessageSource, level MessageLevel,
@@ -924,6 +972,22 @@ func viewUpdateHistoryCallback(userData unsafe.Pointer, caller C.ULView) {
 	view := callbackData[userData].(*View)
 	if view != nil {
 		view.onUpdateHistory()
+	}
+}
+
+//export viewChangeTitleCallback
+func viewChangeTitleCallback(userData unsafe.Pointer, caller C.ULView, title C.ULString) {
+	view := callbackData[userData].(*View)
+	if view != nil {
+		view.onChangeTitle(decodeULString(title))
+	}
+}
+
+//export viewChangeURLCallback
+func viewChangeURLCallback(userData unsafe.Pointer, caller C.ULView, url C.ULString) {
+	view := callbackData[userData].(*View)
+	if view != nil {
+		view.onChangeURL(decodeULString(url))
 	}
 }
 
