@@ -147,13 +147,17 @@ type App struct {
 // Window is an application window
 type Window struct {
 	win C.ULWindow
-	ovl C.ULOverlay
+	ovl []Overlay
 
-	app  *App
-	view *View
+	app *App
 
 	onResize func(width, height uint)
 	onClose  func()
+}
+
+type Overlay struct {
+	ovl  C.ULOverlay
+	view View
 }
 
 // View is the window "content"
@@ -295,18 +299,19 @@ func (app *App) NewWindow(width, height uint, fullscreen bool, title string) *Wi
 		C.kWindowFlags_Titled|C.kWindowFlags_Resizable|C.kWindowFlags_Maximizable),
 		app: app}
 
-	win.SetTitle(title)
-
 	C.ulAppSetWindow(app.app, win.win)
 
-	win.ovl = C.ulCreateOverlay(win.win, C.ulWindowGetWidth(win.win), C.ulWindowGetHeight(win.win), 0, 0)
+	win.SetTitle(title)
+	win.NewOverlay(width, height, 0, 0)
 	return win
 }
 
 // Destroy destroys the window.
 func (win *Window) Destroy() {
 	delete(win.app.windows, win.win)
-	C.ulDestroyOverlay(win.ovl)
+	for _, o := range win.ovl {
+		C.ulDestroyOverlay(o.ovl)
+	}
 	C.ulDestroyWindow(win.win)
 	win.OnResize(nil)
 	win.ovl = nil
@@ -329,14 +334,35 @@ func (win *Window) SetTitle(title string) {
 	C.free(unsafe.Pointer(t))
 }
 
-// Whether or not an overlay has keyboard focus.
-func (win *Window) HasFocus() bool {
-	return bool(C.ulOverlayHasFocus(win.ovl))
+func (win *Window) Width() uint {
+	return uint(C.ulWindowGetWidth(win.win))
 }
 
-// Grant this overlay exclusive keyboard focus.
-func (win *Window) Focus() {
-	C.ulOverlayFocus(win.ovl)
+func (win *Window) Height() uint {
+	return uint(C.ulWindowGetHeight(win.win))
+}
+
+// Create a new Overlay.
+func (win *Window) NewOverlay(width, height uint, x, y int) *Overlay {
+	cOvl := C.ulCreateOverlay(win.win, C.uint(width), C.uint(height), C.int(x), C.int(y))
+	ovl := Overlay{ovl: cOvl, view: View{view: C.ulOverlayGetView(cOvl)}}
+	win.ovl = append(win.ovl, ovl)
+	return &ovl
+}
+
+func (win *Window) RemoveOverlay(i int) {
+	if i >= 0 && i < len(win.ovl) {
+		win.ovl[i].Destroy()
+		win.ovl = append(win.ovl[i:], win.ovl[i+1:]...)
+	}
+}
+
+func (win *Window) NOverlay() int {
+	return len(win.ovl)
+}
+
+func (win *Window) Overlay(i int) *Overlay {
+	return &win.ovl[i]
 }
 
 // IsFullscreen checks whether or not a window is fullscreen.
@@ -344,10 +370,40 @@ func (win *Window) IsFullscreen() bool {
 	return bool(C.ulWindowIsFullscreen(win.win))
 }
 
+// Whether or not the overlay is hidden (not drawn).
+func (win *Window) IsHidden() bool {
+	return win.ovl[0].IsHidden()
+}
+
+// Hide the overlay (will no longer be drawn)
+func (win *Window) Hide() {
+	win.ovl[0].Hide()
+}
+
+// Show the overlay.
+func (win *Window) Show() {
+	win.ovl[0].Show()
+}
+
+// Whether or not an overlay has keyboard focus.
+func (win *Window) HasFocus() bool {
+	return win.ovl[0].HasFocus()
+}
+
+// Grant this overlay exclusive keyboard focus.
+func (win *Window) Focus() {
+	win.ovl[0].Focus()
+}
+
+// Remove keyboard focus.
+func (win *Window) Unfocus() {
+	win.ovl[0].Unfocus()
+}
+
 // Resize resizes the window (and underlying View).
 // Dimensions should be specified in device coordinates.
 func (win *Window) Resize(width, height uint) {
-	C.ulOverlayResize(win.ovl, C.uint(width), C.uint(height))
+	win.ovl[0].Resize(width, height)
 }
 
 // OnResize sets a callback to be notified when a window resizes
@@ -381,11 +437,11 @@ func (win *Window) OnClose(cb func()) {
 
 // View gets the underlying View.
 func (win *Window) View() *View {
-	if win.view == nil {
-		win.view = &View{view: C.ulOverlayGetView(win.ovl)}
+	if len(win.ovl) > 0 {
+		return win.ovl[0].view
 	}
 
-	return win.view
+	return nil
 }
 
 // LoadHTML loads a raw string of html
@@ -680,6 +736,9 @@ func (ctx *JSContext) JSValue(v interface{}) JSValue {
 	}
 
 	switch t := v.(type) {
+	case *JSValue:
+		return *t
+
 	case JSValue:
 		return t
 
@@ -709,6 +768,14 @@ func (ctx *JSContext) JSValue(v interface{}) JSValue {
 
 	case int64:
 		return ctx.Number(float64(t))
+
+	case FunctionCallback:
+		fv := ctx.FunctionCallback("", t)
+		return *fv
+
+	case func(function, this *JSObject, args ...*JSValue) *JSValue:
+		fv := ctx.FunctionCallback("", t)
+		return *fv
 
 	default:
 		log.Fatalf("cannot convert %#T to JSValue", t)
@@ -804,6 +871,12 @@ func (o *JSObject) PropertyNames() []string {
 	}
 
 	return names
+}
+
+func (o *JSObject) SetPropertyValue(name string, value interface{}) {
+	ctx := JSContext{ctx: o.ctx}
+	jv := ctx.JSValue(value)
+	o.SetProperty(name, &jv)
 }
 
 //export appUpdateCallback
@@ -1120,6 +1193,53 @@ func (r *Renderer) Update() {
 // Render all active Views to their respective bitmaps.
 func (r *Renderer) Render() {
 	C.ulRender(r.rnd)
+}
+
+// Destroy an overlay.
+func (ovl *Overlay) Destroy() {
+	C.ulDestroyOverlay(ovl.ovl)
+	ovl.ovl = nil
+}
+
+//
+func (ovl *Overlay) View() *View {
+	return &ovl.view
+}
+
+// Whether or not the overlay is hidden (not drawn).
+func (ovl *Overlay) IsHidden() bool {
+	return bool(C.ulOverlayIsHidden(ovl.ovl))
+}
+
+// Hide the overlay (will no longer be drawn)
+func (ovl *Overlay) Hide() {
+	C.ulOverlayHide(ovl.ovl)
+}
+
+// Show the overlay.
+func (ovl *Overlay) Show() {
+	C.ulOverlayShow(ovl.ovl)
+}
+
+// Whether or not an overlay has keyboard focus.
+func (ovl *Overlay) HasFocus() bool {
+	return bool(C.ulOverlayHasFocus(ovl.ovl))
+}
+
+// Grant this overlay exclusive keyboard focus.
+func (ovl *Overlay) Focus() {
+	C.ulOverlayFocus(ovl.ovl)
+}
+
+// Remove keyboard focus.
+func (ovl *Overlay) Unfocus() {
+	C.ulOverlayUnfocus(ovl.ovl)
+}
+
+// Resize resizes the overlay (and underlying View).
+// Dimensions should be specified in device coordinates.
+func (ovl *Overlay) Resize(width, height uint) {
+	C.ulOverlayResize(ovl.ovl, C.uint(width), C.uint(height))
 }
 
 // Create a View with certain size (in device coordinates).
