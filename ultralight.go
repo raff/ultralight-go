@@ -330,7 +330,7 @@ func (app *App) NewWindow(width, height uint, fullscreen bool, title string) *Wi
 func (win *Window) Destroy() {
 	delete(win.app.windows, win.win)
 	for _, o := range win.ovl {
-		C.ulDestroyOverlay(o.ovl)
+		o.Destroy()
 	}
 	C.ulDestroyWindow(win.win)
 	win.OnResize(nil)
