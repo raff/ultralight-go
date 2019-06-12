@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/raff/ultralight-go"
 )
@@ -204,10 +206,17 @@ func (ui *UI) OnActiveTabChange(f, this *ultralight.JSObject, args ...*ultraligh
 
 func (ui *UI) OnRequestChangeURL(f, this *ultralight.JSObject, args ...*ultralight.JSValue) *ultralight.JSValue {
 	if len(args) == 1 {
-		url := args[0].String()
+		qurl := args[0].String()
+		if !strings.Contains(qurl, "://") { // no URL scheme
+			if strings.Contains(qurl, ".") { // host/domain
+				qurl = "https://" + qurl
+			} else {
+				qurl = fmt.Sprintf("https://www.google.com/search?q=%v", url.QueryEscape(qurl))
+			}
+		}
 
 		if len(ui.tabs) != 0 {
-			ui.activeTab().View().LoadURL(url)
+			ui.activeTab().View().LoadURL(qurl)
 		}
 	}
 
