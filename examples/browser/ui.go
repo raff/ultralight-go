@@ -259,4 +259,6 @@ func (ui *UI) SetURL(url string) {
 	ui.updateURL.Call(nil, url)
 }
 
-//func (ui *UI) SetCursor(cursor ultralight.Cursor) { }
+func (ui *UI) SetCursor(cursor ultralight.Cursor) {
+	ui.win.SetCursor(cursor)
+}

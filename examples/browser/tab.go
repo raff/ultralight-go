@@ -23,13 +23,11 @@ func NewTab(ui *UI, id int, width, height uint, x, y int) *Tab {
 		ui.UpdateTabURL(id, url)
 	})
 
-	/*
-		view.OnChangeCursor(func(cursor ultralight.Cursor) {
-			if id == ui.activeTabId {
-				ui.SetCursor(cursor)
-			}
-		})
-	*/
+	view.OnChangeCursor(func(cursor ultralight.Cursor) {
+		if id == ui.activeTabId {
+			ui.SetCursor(cursor)
+		}
+	})
 
 	view.OnBeginLoading(func() {
 		ui.UpdateTabNavigation(id, view.IsLoading(), view.CanGoBack(), view.CanGoForward())

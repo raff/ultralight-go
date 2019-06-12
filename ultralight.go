@@ -15,6 +15,7 @@ extern void viewUpdateHistoryCallback(void *, ULView);
 extern void viewDOMReadyCallback(void *, ULView);
 extern void viewChangeTitleCallback(void *, ULView, ULString);
 extern void viewChangeURLCallback(void *, ULView, ULString);
+extern void viewChangeCursorCallback(void *, ULView, ULCursor);
 extern void viewConsoleMessageCallback(void* user_data, ULView caller,
                                        ULMessageSource source, ULMessageLevel level,
                                        ULString message, unsigned int line_number,
@@ -96,6 +97,14 @@ static inline void set_view_change_url_callback(ULView view, void *data) {
         }
 }
 
+static inline void set_view_change_cursor_callback(ULView view, void *data) {
+        if (data == NULL) {
+            ulViewSetChangeCursorCallback(view, NULL, NULL);
+        } else {
+            ulViewSetChangeCursorCallback(view, viewChangeCursorCallback, data);
+        }
+}
+
 static inline void set_view_console_message_callback(ULView view, void *data) {
         if (data == NULL) {
             ulViewSetAddConsoleMessageCallback(view, NULL, NULL);
@@ -154,6 +163,55 @@ const (
 	MessageLevelInfo    = MessageLevel(C.kMessageLevel_Info)
 )
 
+type Cursor int
+
+const (
+	CursorPointer                  = Cursor(C.kCursor_Pointer)
+	CursorCross                    = Cursor(C.kCursor_Cross)
+	CursorHand                     = Cursor(C.kCursor_Hand)
+	CursorIBeam                    = Cursor(C.kCursor_IBeam)
+	CursorWait                     = Cursor(C.kCursor_Wait)
+	CursorHelp                     = Cursor(C.kCursor_Help)
+	CursorEastResize               = Cursor(C.kCursor_EastResize)
+	CursorNorthResize              = Cursor(C.kCursor_NorthResize)
+	CursorNorthEastResize          = Cursor(C.kCursor_NorthEastResize)
+	CursorNorthWestResize          = Cursor(C.kCursor_NorthWestResize)
+	CursorSouthResize              = Cursor(C.kCursor_SouthResize)
+	CursorSouthEastResize          = Cursor(C.kCursor_SouthEastResize)
+	CursorSouthWestResize          = Cursor(C.kCursor_SouthWestResize)
+	CursorWestResize               = Cursor(C.kCursor_WestResize)
+	CursorNorthSouthResize         = Cursor(C.kCursor_NorthSouthResize)
+	CursorEastWestResize           = Cursor(C.kCursor_EastWestResize)
+	CursorNorthEastSouthWestResiz  = Cursor(C.kCursor_NorthEastSouthWestResize)
+	CursorNorthWestSouthEastResize = Cursor(C.kCursor_NorthWestSouthEastResize)
+	CursorColumnResize             = Cursor(C.kCursor_ColumnResize)
+	CursorRowResize                = Cursor(C.kCursor_RowResize)
+	CursorMiddlePanning            = Cursor(C.kCursor_MiddlePanning)
+	CursorEastPanning              = Cursor(C.kCursor_EastPanning)
+	CursorNorthPanning             = Cursor(C.kCursor_NorthPanning)
+	CursorNorthEastPanning         = Cursor(C.kCursor_NorthEastPanning)
+	CursorNorthWestPanning         = Cursor(C.kCursor_NorthWestPanning)
+	CursorSouthPanning             = Cursor(C.kCursor_SouthPanning)
+	CursorSouthEastPanning         = Cursor(C.kCursor_SouthEastPanning)
+	CursorSouthWestPanning         = Cursor(C.kCursor_SouthWestPanning)
+	CursorWestPanning              = Cursor(C.kCursor_WestPanning)
+	CursorMove                     = Cursor(C.kCursor_Move)
+	CursorVerticalText             = Cursor(C.kCursor_VerticalText)
+	CursorCell                     = Cursor(C.kCursor_Cell)
+	CursorContextMenu              = Cursor(C.kCursor_ContextMenu)
+	CursorAlias                    = Cursor(C.kCursor_Alias)
+	CursorProgress                 = Cursor(C.kCursor_Progress)
+	CursorNoDrop                   = Cursor(C.kCursor_NoDrop)
+	CursorCopy                     = Cursor(C.kCursor_Copy)
+	CursorNone                     = Cursor(C.kCursor_None)
+	CursorNotAllowed               = Cursor(C.kCursor_NotAllowed)
+	CursorZoomIn                   = Cursor(C.kCursor_ZoomIn)
+	CursorZoomOut                  = Cursor(C.kCursor_ZoomOut)
+	CursorGrab                     = Cursor(C.kCursor_Grab)
+	CursorGrabbing                 = Cursor(C.kCursor_Grabbing)
+	CursorCustom                   = Cursor(C.kCursor_Custom)
+)
+
 // App is the main application object
 type App struct {
 	app     C.ULApp
@@ -188,6 +246,7 @@ type View struct {
 	onDOMReady       func()
 	onChangeTitle    func(string)
 	onChangeURL      func(string)
+	onChangeCursor   func(Cursor)
 	onConsoleMessage func(MessageSource, MessageLevel, string, uint, uint, string)
 }
 
@@ -352,6 +411,10 @@ func (win *Window) SetTitle(title string) {
 	t := C.CString(title)
 	C.ulWindowSetTitle(win.win, t)
 	C.free(unsafe.Pointer(t))
+}
+
+func (win *Window) SetCursor(cursor Cursor) {
+	C.ulWindowSetCursor(win.win, C.ULCursor(cursor))
 }
 
 func (win *Window) Width() uint {
@@ -647,6 +710,20 @@ func (view *View) OnChangeURL(cb func(string)) {
 	} else {
 		callbackData[p] = view
 		C.set_view_change_url_callback(view.view, p)
+	}
+}
+
+// Set callback for when the mouse cursor changes
+func (view *View) OnChangeCursor(cb func(Cursor)) {
+	view.onChangeCursor = cb
+	p := unsafe.Pointer(view.view)
+
+	if cb == nil {
+		callbackData[p] = nil
+		C.set_view_change_cursor_callback(view.view, nil)
+	} else {
+		callbackData[p] = view
+		C.set_view_change_cursor_callback(view.view, p)
 	}
 }
 
@@ -988,6 +1065,14 @@ func viewChangeURLCallback(userData unsafe.Pointer, caller C.ULView, url C.ULStr
 	view := callbackData[userData].(*View)
 	if view != nil {
 		view.onChangeURL(decodeULString(url))
+	}
+}
+
+//export viewChangeCursorCallback
+func viewChangeCursorCallback(userData unsafe.Pointer, caller C.ULView, cursor C.ULCursor) {
+	view := callbackData[userData].(*View)
+	if view != nil {
+		view.onChangeCursor(Cursor(cursor))
 	}
 }
 
