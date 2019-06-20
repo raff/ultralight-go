@@ -13,6 +13,9 @@ extern void viewBeginLoadingCallback(void *, ULView);
 extern void viewFinishLoadingCallback(void *, ULView);
 extern void viewUpdateHistoryCallback(void *, ULView);
 extern void viewDOMReadyCallback(void *, ULView);
+extern void viewChangeTitleCallback(void *, ULView, ULString);
+extern void viewChangeURLCallback(void *, ULView, ULString);
+extern void viewChangeCursorCallback(void *, ULView, ULCursor);
 extern void viewConsoleMessageCallback(void* user_data, ULView caller,
                                        ULMessageSource source, ULMessageLevel level,
                                        ULString message, unsigned int line_number,
@@ -78,6 +81,30 @@ static inline void set_view_dom_ready_callback(ULView view, void *data) {
         }
 }
 
+static inline void set_view_change_title_callback(ULView view, void *data) {
+        if (data == NULL) {
+            ulViewSetChangeTitleCallback(view, NULL, NULL);
+        } else {
+            ulViewSetChangeTitleCallback(view, viewChangeTitleCallback, data);
+        }
+}
+
+static inline void set_view_change_url_callback(ULView view, void *data) {
+        if (data == NULL) {
+            ulViewSetChangeURLCallback(view, NULL, NULL);
+        } else {
+            ulViewSetChangeURLCallback(view, viewChangeURLCallback, data);
+        }
+}
+
+static inline void set_view_change_cursor_callback(ULView view, void *data) {
+        if (data == NULL) {
+            ulViewSetChangeCursorCallback(view, NULL, NULL);
+        } else {
+            ulViewSetChangeCursorCallback(view, viewChangeCursorCallback, data);
+        }
+}
+
 static inline void set_view_console_message_callback(ULView view, void *data) {
         if (data == NULL) {
             ulViewSetAddConsoleMessageCallback(view, NULL, NULL);
@@ -136,6 +163,55 @@ const (
 	MessageLevelInfo    = MessageLevel(C.kMessageLevel_Info)
 )
 
+type Cursor int
+
+const (
+	CursorPointer                  = Cursor(C.kCursor_Pointer)
+	CursorCross                    = Cursor(C.kCursor_Cross)
+	CursorHand                     = Cursor(C.kCursor_Hand)
+	CursorIBeam                    = Cursor(C.kCursor_IBeam)
+	CursorWait                     = Cursor(C.kCursor_Wait)
+	CursorHelp                     = Cursor(C.kCursor_Help)
+	CursorEastResize               = Cursor(C.kCursor_EastResize)
+	CursorNorthResize              = Cursor(C.kCursor_NorthResize)
+	CursorNorthEastResize          = Cursor(C.kCursor_NorthEastResize)
+	CursorNorthWestResize          = Cursor(C.kCursor_NorthWestResize)
+	CursorSouthResize              = Cursor(C.kCursor_SouthResize)
+	CursorSouthEastResize          = Cursor(C.kCursor_SouthEastResize)
+	CursorSouthWestResize          = Cursor(C.kCursor_SouthWestResize)
+	CursorWestResize               = Cursor(C.kCursor_WestResize)
+	CursorNorthSouthResize         = Cursor(C.kCursor_NorthSouthResize)
+	CursorEastWestResize           = Cursor(C.kCursor_EastWestResize)
+	CursorNorthEastSouthWestResiz  = Cursor(C.kCursor_NorthEastSouthWestResize)
+	CursorNorthWestSouthEastResize = Cursor(C.kCursor_NorthWestSouthEastResize)
+	CursorColumnResize             = Cursor(C.kCursor_ColumnResize)
+	CursorRowResize                = Cursor(C.kCursor_RowResize)
+	CursorMiddlePanning            = Cursor(C.kCursor_MiddlePanning)
+	CursorEastPanning              = Cursor(C.kCursor_EastPanning)
+	CursorNorthPanning             = Cursor(C.kCursor_NorthPanning)
+	CursorNorthEastPanning         = Cursor(C.kCursor_NorthEastPanning)
+	CursorNorthWestPanning         = Cursor(C.kCursor_NorthWestPanning)
+	CursorSouthPanning             = Cursor(C.kCursor_SouthPanning)
+	CursorSouthEastPanning         = Cursor(C.kCursor_SouthEastPanning)
+	CursorSouthWestPanning         = Cursor(C.kCursor_SouthWestPanning)
+	CursorWestPanning              = Cursor(C.kCursor_WestPanning)
+	CursorMove                     = Cursor(C.kCursor_Move)
+	CursorVerticalText             = Cursor(C.kCursor_VerticalText)
+	CursorCell                     = Cursor(C.kCursor_Cell)
+	CursorContextMenu              = Cursor(C.kCursor_ContextMenu)
+	CursorAlias                    = Cursor(C.kCursor_Alias)
+	CursorProgress                 = Cursor(C.kCursor_Progress)
+	CursorNoDrop                   = Cursor(C.kCursor_NoDrop)
+	CursorCopy                     = Cursor(C.kCursor_Copy)
+	CursorNone                     = Cursor(C.kCursor_None)
+	CursorNotAllowed               = Cursor(C.kCursor_NotAllowed)
+	CursorZoomIn                   = Cursor(C.kCursor_ZoomIn)
+	CursorZoomOut                  = Cursor(C.kCursor_ZoomOut)
+	CursorGrab                     = Cursor(C.kCursor_Grab)
+	CursorGrabbing                 = Cursor(C.kCursor_Grabbing)
+	CursorCustom                   = Cursor(C.kCursor_Custom)
+)
+
 // App is the main application object
 type App struct {
 	app     C.ULApp
@@ -147,13 +223,17 @@ type App struct {
 // Window is an application window
 type Window struct {
 	win C.ULWindow
-	ovl C.ULOverlay
+	ovl []Overlay
 
-	app  *App
-	view *View
+	app *App
 
 	onResize func(width, height uint)
 	onClose  func()
+}
+
+type Overlay struct {
+	ovl  C.ULOverlay
+	view View
 }
 
 // View is the window "content"
@@ -164,6 +244,9 @@ type View struct {
 	onFinishLoading  func()
 	onUpdateHistory  func()
 	onDOMReady       func()
+	onChangeTitle    func(string)
+	onChangeURL      func(string)
+	onChangeCursor   func(Cursor)
 	onConsoleMessage func(MessageSource, MessageLevel, string, uint, uint, string)
 }
 
@@ -295,18 +378,19 @@ func (app *App) NewWindow(width, height uint, fullscreen bool, title string) *Wi
 		C.kWindowFlags_Titled|C.kWindowFlags_Resizable|C.kWindowFlags_Maximizable),
 		app: app}
 
-	win.SetTitle(title)
-
 	C.ulAppSetWindow(app.app, win.win)
 
-	win.ovl = C.ulCreateOverlay(win.win, C.ulWindowGetWidth(win.win), C.ulWindowGetHeight(win.win), 0, 0)
+	win.SetTitle(title)
+	win.NewOverlay(width, height, 0, 0)
 	return win
 }
 
 // Destroy destroys the window.
 func (win *Window) Destroy() {
 	delete(win.app.windows, win.win)
-	C.ulDestroyOverlay(win.ovl)
+	for _, o := range win.ovl {
+		o.Destroy()
+	}
 	C.ulDestroyWindow(win.win)
 	win.OnResize(nil)
 	win.ovl = nil
@@ -329,14 +413,39 @@ func (win *Window) SetTitle(title string) {
 	C.free(unsafe.Pointer(t))
 }
 
-// Whether or not an overlay has keyboard focus.
-func (win *Window) HasFocus() bool {
-	return bool(C.ulOverlayHasFocus(win.ovl))
+func (win *Window) SetCursor(cursor Cursor) {
+	C.ulWindowSetCursor(win.win, C.ULCursor(cursor))
 }
 
-// Grant this overlay exclusive keyboard focus.
-func (win *Window) Focus() {
-	C.ulOverlayFocus(win.ovl)
+func (win *Window) Width() uint {
+	return uint(C.ulWindowGetWidth(win.win))
+}
+
+func (win *Window) Height() uint {
+	return uint(C.ulWindowGetHeight(win.win))
+}
+
+// Create a new Overlay.
+func (win *Window) NewOverlay(width, height uint, x, y int) *Overlay {
+	cOvl := C.ulCreateOverlay(win.win, C.uint(width), C.uint(height), C.int(x), C.int(y))
+	ovl := Overlay{ovl: cOvl, view: View{view: C.ulOverlayGetView(cOvl)}}
+	win.ovl = append(win.ovl, ovl)
+	return &ovl
+}
+
+func (win *Window) RemoveOverlay(i int) {
+	if i >= 0 && i < len(win.ovl) {
+		win.ovl[i].Destroy()
+		win.ovl = append(win.ovl[i:], win.ovl[i+1:]...)
+	}
+}
+
+func (win *Window) NOverlay() int {
+	return len(win.ovl)
+}
+
+func (win *Window) Overlay(i int) *Overlay {
+	return &win.ovl[i]
 }
 
 // IsFullscreen checks whether or not a window is fullscreen.
@@ -344,10 +453,40 @@ func (win *Window) IsFullscreen() bool {
 	return bool(C.ulWindowIsFullscreen(win.win))
 }
 
+// Whether or not the overlay is hidden (not drawn).
+func (win *Window) IsHidden() bool {
+	return win.ovl[0].IsHidden()
+}
+
+// Hide the overlay (will no longer be drawn)
+func (win *Window) Hide() {
+	win.ovl[0].Hide()
+}
+
+// Show the overlay.
+func (win *Window) Show() {
+	win.ovl[0].Show()
+}
+
+// Whether or not an overlay has keyboard focus.
+func (win *Window) HasFocus() bool {
+	return win.ovl[0].HasFocus()
+}
+
+// Grant this overlay exclusive keyboard focus.
+func (win *Window) Focus() {
+	win.ovl[0].Focus()
+}
+
+// Remove keyboard focus.
+func (win *Window) Unfocus() {
+	win.ovl[0].Unfocus()
+}
+
 // Resize resizes the window (and underlying View).
 // Dimensions should be specified in device coordinates.
 func (win *Window) Resize(width, height uint) {
-	C.ulOverlayResize(win.ovl, C.uint(width), C.uint(height))
+	win.ovl[0].Resize(width, height)
 }
 
 // OnResize sets a callback to be notified when a window resizes
@@ -381,11 +520,11 @@ func (win *Window) OnClose(cb func()) {
 
 // View gets the underlying View.
 func (win *Window) View() *View {
-	if win.view == nil {
-		win.view = &View{view: C.ulOverlayGetView(win.ovl)}
+	if len(win.ovl) > 0 {
+		return win.ovl[0].View()
 	}
 
-	return win.view
+	return nil
 }
 
 // LoadHTML loads a raw string of html
@@ -546,6 +685,48 @@ func (view *View) OnDOMReady(cb func()) {
 	}
 }
 
+// Set callback for when the page title changes
+func (view *View) OnChangeTitle(cb func(string)) {
+	view.onChangeTitle = cb
+	p := unsafe.Pointer(view.view)
+
+	if cb == nil {
+		callbackData[p] = nil
+		C.set_view_change_title_callback(view.view, nil)
+	} else {
+		callbackData[p] = view
+		C.set_view_change_title_callback(view.view, p)
+	}
+}
+
+// Set callback for when the page URL changes
+func (view *View) OnChangeURL(cb func(string)) {
+	view.onChangeURL = cb
+	p := unsafe.Pointer(view.view)
+
+	if cb == nil {
+		callbackData[p] = nil
+		C.set_view_change_url_callback(view.view, nil)
+	} else {
+		callbackData[p] = view
+		C.set_view_change_url_callback(view.view, p)
+	}
+}
+
+// Set callback for when the mouse cursor changes
+func (view *View) OnChangeCursor(cb func(Cursor)) {
+	view.onChangeCursor = cb
+	p := unsafe.Pointer(view.view)
+
+	if cb == nil {
+		callbackData[p] = nil
+		C.set_view_change_cursor_callback(view.view, nil)
+	} else {
+		callbackData[p] = view
+		C.set_view_change_cursor_callback(view.view, p)
+	}
+}
+
 // Set callback for when a message is added to the console (useful for
 // JavaScript / network errors and debugging)
 func (view *View) OnConsoleMessage(cb func(source MessageSource, level MessageLevel,
@@ -680,6 +861,9 @@ func (ctx *JSContext) JSValue(v interface{}) JSValue {
 	}
 
 	switch t := v.(type) {
+	case *JSValue:
+		return *t
+
 	case JSValue:
 		return t
 
@@ -709,6 +893,14 @@ func (ctx *JSContext) JSValue(v interface{}) JSValue {
 
 	case int64:
 		return ctx.Number(float64(t))
+
+	case FunctionCallback:
+		fv := ctx.FunctionCallback("", t)
+		return *fv
+
+	case func(function, this *JSObject, args ...*JSValue) *JSValue:
+		fv := ctx.FunctionCallback("", t)
+		return *fv
 
 	default:
 		log.Fatalf("cannot convert %#T to JSValue", t)
@@ -806,6 +998,12 @@ func (o *JSObject) PropertyNames() []string {
 	return names
 }
 
+func (o *JSObject) SetPropertyValue(name string, value interface{}) {
+	ctx := JSContext{ctx: o.ctx}
+	jv := ctx.JSValue(value)
+	o.SetProperty(name, &jv)
+}
+
 //export appUpdateCallback
 func appUpdateCallback(userData unsafe.Pointer) {
 	app := callbackData[userData].(*App)
@@ -851,6 +1049,30 @@ func viewUpdateHistoryCallback(userData unsafe.Pointer, caller C.ULView) {
 	view := callbackData[userData].(*View)
 	if view != nil {
 		view.onUpdateHistory()
+	}
+}
+
+//export viewChangeTitleCallback
+func viewChangeTitleCallback(userData unsafe.Pointer, caller C.ULView, title C.ULString) {
+	view := callbackData[userData].(*View)
+	if view != nil {
+		view.onChangeTitle(decodeULString(title))
+	}
+}
+
+//export viewChangeURLCallback
+func viewChangeURLCallback(userData unsafe.Pointer, caller C.ULView, url C.ULString) {
+	view := callbackData[userData].(*View)
+	if view != nil {
+		view.onChangeURL(decodeULString(url))
+	}
+}
+
+//export viewChangeCursorCallback
+func viewChangeCursorCallback(userData unsafe.Pointer, caller C.ULView, cursor C.ULCursor) {
+	view := callbackData[userData].(*View)
+	if view != nil {
+		view.onChangeCursor(Cursor(cursor))
 	}
 }
 
@@ -1120,6 +1342,53 @@ func (r *Renderer) Update() {
 // Render all active Views to their respective bitmaps.
 func (r *Renderer) Render() {
 	C.ulRender(r.rnd)
+}
+
+// Destroy an overlay.
+func (ovl *Overlay) Destroy() {
+	C.ulDestroyOverlay(ovl.ovl)
+	ovl.ovl = nil
+}
+
+//
+func (ovl *Overlay) View() *View {
+	return &ovl.view
+}
+
+// Whether or not the overlay is hidden (not drawn).
+func (ovl *Overlay) IsHidden() bool {
+	return bool(C.ulOverlayIsHidden(ovl.ovl))
+}
+
+// Hide the overlay (will no longer be drawn)
+func (ovl *Overlay) Hide() {
+	C.ulOverlayHide(ovl.ovl)
+}
+
+// Show the overlay.
+func (ovl *Overlay) Show() {
+	C.ulOverlayShow(ovl.ovl)
+}
+
+// Whether or not an overlay has keyboard focus.
+func (ovl *Overlay) HasFocus() bool {
+	return bool(C.ulOverlayHasFocus(ovl.ovl))
+}
+
+// Grant this overlay exclusive keyboard focus.
+func (ovl *Overlay) Focus() {
+	C.ulOverlayFocus(ovl.ovl)
+}
+
+// Remove keyboard focus.
+func (ovl *Overlay) Unfocus() {
+	C.ulOverlayUnfocus(ovl.ovl)
+}
+
+// Resize resizes the overlay (and underlying View).
+// Dimensions should be specified in device coordinates.
+func (ovl *Overlay) Resize(width, height uint) {
+	C.ulOverlayResize(ovl.ovl, C.uint(width), C.uint(height))
 }
 
 // Create a View with certain size (in device coordinates).

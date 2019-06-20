@@ -20,3 +20,13 @@ For now this requires a few manual steps:
 - Run example:
 
       go run examples/resize.go
+
+- Run browser:
+
+      cd examples/browser; make 
+      ./browser
+
+    The browser needs the HTML assets in examples/browser/assets and expects them in the current directory,
+    so you need to "cd" in there.
+
+    It also expects the SDK to be in the current directy, so the Makefile creates a link.
