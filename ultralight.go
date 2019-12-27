@@ -315,7 +315,7 @@ func decodeJSString(s C.JSStringRef) string {
 //
 // Note: You should only create one of these per application lifetime.
 func NewApp() *App {
-	return &App{app: C.ulCreateApp(C.ulCreateConfig()), windows: map[C.ULWindow]*Window{}}
+	return &App{app: C.ulCreateApp(C.ulCreateSettings(), C.ulCreateConfig()), windows: map[C.ULWindow]*Window{}}
 }
 
 // Destroy destroys the App instance.
