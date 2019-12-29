@@ -118,13 +118,14 @@ static inline JSObjectRef make_function_callback(JSContextRef ctx, JSStringRef n
 }
 */
 import "C"
-import "unsafe"
-import "unicode/utf16"
-import "unicode/utf8"
-import "reflect"
-import "bytes"
-
-import "log"
+import (
+	"bytes"
+	"log"
+	"reflect"
+	"unicode/utf16"
+	"unicode/utf8"
+	"unsafe"
+)
 
 type JSType int
 
