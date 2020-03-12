@@ -118,13 +118,14 @@ static inline JSObjectRef make_function_callback(JSContextRef ctx, JSStringRef n
 }
 */
 import "C"
-import "unsafe"
-import "unicode/utf16"
-import "unicode/utf8"
-import "reflect"
-import "bytes"
-
-import "log"
+import (
+	"bytes"
+	"log"
+	"reflect"
+	"unicode/utf16"
+	"unicode/utf8"
+	"unsafe"
+)
 
 type JSType int
 
@@ -210,6 +211,15 @@ const (
 	CursorGrab                     = Cursor(C.kCursor_Grab)
 	CursorGrabbing                 = Cursor(C.kCursor_Grabbing)
 	CursorCustom                   = Cursor(C.kCursor_Custom)
+)
+
+type WindowFlag uint
+
+const (
+	WindowFlagBorderless  = WindowFlag(C.kWindowFlags_Borderless)
+	WindowFlagTitled      = WindowFlag(C.kWindowFlags_Titled)
+	WindowFlagResizable   = WindowFlag(C.kWindowFlags_Resizable)
+	WindowFlagMaximizable = WindowFlag(C.kWindowFlags_Maximizable)
 )
 
 // App is the main application object
@@ -376,6 +386,21 @@ func (app *App) NewWindow(width, height uint, fullscreen bool, title string) *Wi
 		C.uint(width), C.uint(height),
 		C.bool(fullscreen),
 		C.kWindowFlags_Titled|C.kWindowFlags_Resizable|C.kWindowFlags_Maximizable),
+		app: app}
+
+	C.ulAppSetWindow(app.app, win.win)
+
+	win.SetTitle(title)
+	win.NewOverlay(width, height, 0, 0)
+	return win
+}
+
+//NewWindowUsingFlags creates a new window and allows you to set your own window flags.
+func (app *App) NewWindowUsingFlags(width, height uint, fullscreen bool, title string, flags WindowFlag) *Window {
+	win := &Window{win: C.ulCreateWindow(C.ulAppGetMainMonitor(app.app),
+		C.uint(width), C.uint(height),
+		C.bool(fullscreen),
+		C.uint(flags)),
 		app: app}
 
 	C.ulAppSetWindow(app.app, win.win)
