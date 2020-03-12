@@ -381,7 +381,22 @@ var callbackData = map[unsafe.Pointer]interface{}{}
 var reverseCallbback = map[interface{}]unsafe.Pointer{}
 
 // NewWindow create a new window and sets it as the main application window.
-func (app *App) NewWindow(width, height uint, fullscreen bool, title string, flags WindowFlag) *Window {
+func (app *App) NewWindow(width, height uint, fullscreen bool, title string) *Window {
+	win := &Window{win: C.ulCreateWindow(C.ulAppGetMainMonitor(app.app),
+		C.uint(width), C.uint(height),
+		C.bool(fullscreen),
+		C.kWindowFlags_Titled|C.kWindowFlags_Resizable|C.kWindowFlags_Maximizable),
+		app: app}
+
+	C.ulAppSetWindow(app.app, win.win)
+
+	win.SetTitle(title)
+	win.NewOverlay(width, height, 0, 0)
+	return win
+}
+
+//NewWindowUsingFlags creates a new window and allows you to set your own window flags.
+func (app *App) NewWindowUsingFlags(width, height uint, fullscreen bool, title string, flags WindowFlag) *Window {
 	win := &Window{win: C.ulCreateWindow(C.ulAppGetMainMonitor(app.app),
 		C.uint(width), C.uint(height),
 		C.bool(fullscreen),
